@@ -3,210 +3,214 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>每日早报 - Daily News</title>
+    <title>早报 | Daily Morning</title>
     <style>
         :root {
-            /* 配色方案：清爽、现代、高对比度 */
-            --primary-color: #2563eb;       /* 科技蓝 */
-            --primary-light: #eff6ff;       /* 浅蓝背景 */
-            --accent-color: #f59e0b;        /* 活力橙（用于强调） */
-            --text-main: #1e293b;           /* 深灰黑 */
-            --text-sec: #64748b;            /* 次要灰 */
-            --bg-body: #f8fafc;             /* 整体背景 */
-            --card-bg: #ffffff;             /* 卡片白 */
-            --border-radius: 12px;
-            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --sweet-pink: #ffaab2;          /* 你指定的颜色 */
+            --soft-pink: #fff0f1;           /* 极浅粉背景 */
+            --accent-yellow: #ffe66d;       /* 活力黄 */
+            --text-color: #7a5c5f;          /* 棕粉色文字，比纯黑更温柔 */
+            --card-bg: #ffffff;
+            --radius: 20px;
         }
-
-        * { box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
-            background-color: transparent; /* 让 iframe 背景透明，融入博客 */
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: transparent;
             margin: 0;
-            padding: 0;
-            color: var(--text-main);
-            line-height: 1.6;
+            padding: 15px;
+            color: var(--text-color);
         }
 
+        /* 整体容器 */
         .container {
             max-width: 100%;
-            margin: 0 auto;
             background: var(--card-bg);
-            /* 如果你希望它看起来像个独立的卡片，保留下面的圆角和阴影；
-               如果希望它完全融入侧边栏，可以去掉 box-shadow 和 border-radius */
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
+            border-radius: var(--radius);
+            box-shadow: 0 10px 30px rgba(255, 170, 178, 0.2);
             overflow: hidden;
-            border: 1px solid #e2e8f0;
+            border: 3px solid var(--soft-pink);
         }
 
-        /* 头部设计 */
-        .header-section {
-            padding: 20px 24px;
-            background: linear-gradient(120deg, #fff 0%, var(--primary-light) 100%);
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header-title h1 {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .header-title h1::before {
-            content: "";
-            display: block;
-            width: 4px;
-            height: 18px;
-            background: var(--primary-color);
-            border-radius: 2px;
-        }
-
-        .date-badge {
-            font-size: 0.85rem;
-            color: var(--primary-color);
-            background: rgba(37, 99, 235, 0.1);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        /* 语录区域 - 像一张便签 */
-        .weiyu-wrapper {
-            padding: 20px 24px 10px;
-        }
-        
-        .weiyu-card {
-            background: #fffbeb; /* 淡淡的米黄色，像便签 */
-            border-left: 4px solid var(--accent-color);
-            padding: 12px 16px;
-            border-radius: 4px;
+        /* 头部：圆润可爱 */
+        .header {
+            background: var(--sweet-pink);
+            padding: 25px 20px;
+            text-align: center;
             position: relative;
         }
 
-        .weiyu-text {
+        .header h1 {
             margin: 0;
-            font-size: 0.95rem;
-            color: #78350f;
-            font-style: italic;
+            color: white;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.05);
         }
 
-        /* 音频播放器优化 */
-        .audio-wrapper {
-            padding: 10px 24px;
+        #date-display {
+            display: inline-block;
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 4px 15px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: bold;
         }
-        
-        .audio-player {
+
+        /* 装饰性小圆点 */
+        .header::after {
+            content: "● ● ●";
+            position: absolute;
+            bottom: 8px;
+            left: 0;
+            right: 0;
+            color: white;
+            opacity: 0.5;
+            font-size: 8px;
+        }
+
+        /* 语录：气泡感 */
+        .weiyu-box {
+            padding: 20px;
+            background: var(--soft-pink);
+            margin: 15px;
+            border-radius: var(--radius);
+            position: relative;
+        }
+
+        .weiyu-box::before {
+            content: "“";
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            font-size: 2rem;
+            color: var(--sweet-pink);
+            opacity: 0.4;
+        }
+
+        #weiyu-text {
+            margin: 0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-color);
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 音频控制台 */
+        .audio-container {
+            padding: 0 20px 15px;
+        }
+
+        audio {
             width: 100%;
-            height: 36px;
-            border-radius: 18px;
-            outline: none;
-        }
-        /* 尝试针对不同浏览器统一样式，虽然 audio 很难完全自定义 */
-        audio::-webkit-media-controls-panel {
-            background-color: var(--bg-body);
+            height: 40px;
+            filter: sepia(20%) saturate(150%) hue-rotate(300deg); /* 给播放器染上粉色调 */
         }
 
         /* 新闻列表 */
         .news-list {
-            padding: 10px 24px 24px;
+            padding: 0 15px 20px;
             list-style: none;
             margin: 0;
         }
 
         .news-item {
+            background: #fff;
+            margin-bottom: 12px;
+            padding: 12px 15px;
+            border-radius: 15px;
             display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
             align-items: flex-start;
-            transition: transform 0.2s;
+            gap: 10px;
+            border: 1px solid #fff5f6;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(255, 170, 178, 0.05);
         }
 
-        .news-item:last-child {
-            margin-bottom: 0;
+        .news-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(255, 170, 178, 0.15);
         }
 
-        /* 序号样式 */
         .news-index {
             flex-shrink: 0;
-            width: 24px;
-            height: 24px;
-            background: var(--primary-light);
-            color: var(--primary-color);
-            border-radius: 6px;
+            width: 22px;
+            height: 22px;
+            background: var(--accent-yellow);
+            color: #947600;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
-            font-weight: 700;
-            margin-top: 2px; /* 视觉对齐 */
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-top: 2px;
         }
 
         .news-content {
-            font-size: 0.95rem;
-            color: var(--text-main);
-            text-align: justify;
-        }
-
-        /* 加载与错误 */
-        #loading, .error-msg {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-sec);
             font-size: 0.9rem;
+            line-height: 1.6;
         }
 
-        /* 响应式微调 */
-        @media (max-width: 480px) {
-            .header-section, .weiyu-wrapper, .audio-wrapper, .news-list {
-                padding-left: 16px;
-                padding-right: 16px;
-            }
-            .header-title h1 { font-size: 1.1rem; }
+        /* 加载动画 */
+        #loading {
+            padding: 50px;
+            text-align: center;
+            color: var(--sweet-pink);
+            font-weight: bold;
         }
+
+        .loading-dots:after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+        }
+
+        /* 自定义滚动条（针对 Chrome） */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--sweet-pink); border-radius: 10px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <div class="header-section">
-            <div class="header-title">
-                <h1>每日早报</h1>
-            </div>
-            <div id="date-display" class="date-badge">Loading...</div>
+        <div class="header">
+            <h1>✨ 每日早报 ✨</h1>
+            <div id="date-display">2026-02-17</div>
         </div>
 
-        <div id="loading">正在获取最新资讯...</div>
+        <div id="loading" class="loading-dots">正在为你打包资讯</div>
 
         <div id="content" style="display: none;">
-            
-            <div class="weiyu-wrapper">
-                <div class="weiyu-card">
-                    <p id="weiyu-text" class="weiyu-text"></p>
-                </div>
+            <div class="weiyu-box">
+                <p id="weiyu-text"></p>
             </div>
 
-            <div class="audio-wrapper" id="audio-box" style="display: none;">
-                <audio id="audio-control" class="audio-player" controls></audio>
+            <div class="audio-container" id="audio-box" style="display: none;">
+                <audio id="audio-control" controls></audio>
             </div>
 
             <ul id="news-list" class="news-list">
-            </ul>
+                </ul>
+            
+            <div style="text-align: center; padding-bottom: 20px; font-size: 12px; color: #ccc;">
+                今日份美好已送达 ☁️
+            </div>
         </div>
     </div>
 
     <script>
         const API_ENDPOINT = './data.json'; 
-        const CACHE_KEY = 'zaobao_local_data_v2'; // 更改key以免和旧格式冲突
+        const CACHE_KEY = 'zaobao_sweet_style';
 
         window.onload = function() {
             initNews();
@@ -215,33 +219,22 @@
         async function initNews() {
             const loadingEl = document.getElementById('loading');
             const contentEl = document.getElementById('content');
-            const dateEl = document.getElementById('date-display');
 
-            // 1. 尝试本地缓存
+            // 1. 尝试缓存
             const cachedDataStr = localStorage.getItem(CACHE_KEY);
             let hasRenderedCache = false;
 
             if (cachedDataStr) {
                 try {
                     const cachedData = JSON.parse(cachedDataStr);
-                    const today = new Date().toISOString().split('T')[0]; 
-                    
-                    // 即使是旧数据也先渲染出来，防止空白
                     renderData(cachedData);
                     hasRenderedCache = true;
                     loadingEl.style.display = 'none';
                     contentEl.style.display = 'block';
-
-                    if (cachedData.date === today) {
-                        console.log('Using local cache');
-                        return; 
-                    }
-                } catch (e) {
-                    console.error('Cache error', e);
-                }
+                } catch (e) { console.error(e); }
             }
 
-            // 2. 网络请求
+            // 2. 实时数据
             try {
                 const response = await fetch(`${API_ENDPOINT}?t=${new Date().getTime()}`);
                 const result = await response.json();
@@ -251,61 +244,42 @@
                     localStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
                     loadingEl.style.display = 'none';
                     contentEl.style.display = 'block';
-                } else {
-                    if (!hasRenderedCache) {
-                        loadingEl.innerHTML = `<div class="error-msg">暂无内容更新</div>`;
-                    }
                 }
             } catch (error) {
-                console.error('Fetch error:', error);
                 if (!hasRenderedCache) {
-                    loadingEl.innerHTML = `<div class="error-msg">网络连接失败</div>`;
+                    loadingEl.textContent = "哎呀，网络开小差了 (っ °Д °;)っ";
                 }
             }
         }
 
         function renderData(data) {
-            // 设置日期
             document.getElementById('date-display').textContent = data.date;
+            document.getElementById('weiyu-text').textContent = data.weiyu || "生活明朗，万物可爱。";
 
-            // 设置音频
             const audioBox = document.getElementById('audio-box');
             const audioCtrl = document.getElementById('audio-control');
             if (data.audio) {
                 audioBox.style.display = 'block';
-                if (audioCtrl.getAttribute('src') !== data.audio) {
-                    audioCtrl.src = data.audio;
-                }
-            } else {
-                audioBox.style.display = 'none';
+                if (audioCtrl.src !== data.audio) audioCtrl.src = data.audio;
             }
 
-            // 设置语录
-            document.getElementById('weiyu-text').textContent = data.weiyu || "新的一天，加油！";
-
-            // 设置列表
             const newsList = document.getElementById('news-list');
             newsList.innerHTML = '';
 
-            if (data.news && Array.isArray(data.news)) {
+            if (data.news) {
                 data.news.forEach(itemStr => {
                     const li = document.createElement('li');
                     li.className = 'news-item';
                     
-                    // 正则分离序号和内容 (支持 "1、" 或 "1.")
+                    // 分离数字序号
                     const match = itemStr.match(/^(\d+)[、.](.*)/);
-                    
                     if (match) {
                         li.innerHTML = `
                             <div class="news-index">${match[1]}</div>
                             <div class="news-content">${match[2]}</div>
                         `;
                     } else {
-                        // 如果没有序号，用默认圆点
-                        li.innerHTML = `
-                            <div class="news-index">●</div>
-                            <div class="news-content">${itemStr}</div>
-                        `;
+                        li.innerHTML = `<div class="news-index">❤</div><div class="news-content">${itemStr}</div>`;
                     }
                     newsList.appendChild(li);
                 });
