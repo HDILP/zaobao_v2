@@ -1,0 +1,59 @@
+name: Deploy Daily News to GitHub Pages
+
+on:
+  schedule:
+    # 北京时间 6:00, 8:00, 10:00 各运行一次 (对应 UTC 22:00, 0:00, 2:00)
+    - cron: '0 22 * * *' 
+    - cron: '0 0 * * *'
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  # 当推送代码到 main 分支时也触发（方便调试）
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Fetch News Data
+        env:
+          ALAPI_TOKEN: ${{ secrets.ALAPI_TOKEN }}
+        run: node scripts/fetch-news.js
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          # 只发布需要的文件，避免泄露脚本或配置
+          # 如果需要发布所有文件，去掉 exclude_files
+          # 这里我们发布 index.html 和 data.json
+          # 注意：peaceiris 默认发布整个 publish_dir，建议确保根目录干净
+          # 或者你可以创建一个 dist 文件夹专门放这两个文件
+          # 为了简单，我们假设根目录只有这两个文件需要展示，或者配置 ignore
+          # 最安全的方式是只 copy 需要的文件到 dist 再发布
+          
+      # 更安全的发布步骤：只发布静态文件
+      - name: Prepare Dist
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp data.json dist/
+      
+      - name: Deploy Dist to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
