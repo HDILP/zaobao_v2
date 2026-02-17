@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日早报 - Daily News</title>
+    <style>
+        @import url("https://fontsapi.zeoseven.com/181/bold/result.css");
+
+        :root {
+            --primary-color: #ff6b9d;
+            --primary-dark: #ff4d88;
+            --accent-color: #ffd93d;
+            --bg-gradient-start: #ffeef8;
+            --bg-gradient-end: #fff5e6;
+            --card-bg: #ffffff;
+            --text-main: #2d2d2d; 
+            --text-sec: #666666;
+            --shadow-soft: 0 10px 40px rgba(255, 107, 157, 0.15);
+            --shadow-hover: 0 15px 50px rgba(255, 107, 157, 0.25);
+        }
+
+        body {
+            font-family: "未来圆 SC", monospace;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 30px 20px;
+            color: var(--text-main);
+            line-height: 1.7;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 107, 157, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: var(--card-bg);            border-radius: 24px; 
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+            min-height: 500px;
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .header-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            background: linear-gradient(135deg, #ffe9f5 0%, #fff8e1 100%);
+            position: relative;
+        }
+
+        .header-content {
+            padding: 30px 40px 15px;
+            border-bottom: 2px solid transparent;
+            background: linear-gradient(to right, rgba(255, 107, 157, 0.05), rgba(255, 217, 61, 0.05));
+            position: relative;
+        }
+
+        .header-content::before {
+            content: "✨";
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            font-size: 1.5rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        .date-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.95rem;            font-weight: bold;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .date-tag::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .date-tag:hover::before {
+            left: 100%;
+        }
+
+        .main-title {
+            margin: 0;
+            font-size: 2.3rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+            font-weight: 900;
+        }
+
+        .audio-player {
+            margin: 25px 40px;
+            background: linear-gradient(135deg, #fff0f7 0%, #fffbeb 100%);
+            border-radius: 16px;
+            padding: 15px;
+            border: 2px solid rgba(255, 107, 157, 0.1);
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.08);
+        }
+
+        audio { 
+            width: 100%; 
+            height: 45px;
+            border-radius: 10px;
+        }
+
+        .news-list { 
+            padding: 0 40px 40px;             list-style: none; 
+            margin: 0; 
+        }
+
+        .news-item {
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(255, 107, 157, 0.1); 
+            font-size: 1.25rem; 
+            line-height: 1.8;  
+            color: var(--text-main);
+            display: flex;
+            align-items: flex-start;
+            text-align: justify;
+            transition: transform 0.2s ease, padding-left 0.2s ease;
+            position: relative;
+        }
+
+        .news-item::before {
+            content: "🌸";
+            position: absolute;
+            left: -25px;
+            opacity: 0;
+            transition: opacity 0.2s, left 0.2s;
+        }
+
+        .news-item:hover {
+            transform: translateX(5px);
+            padding-left: 10px;
+        }
+
+        .news-item:hover::before {
+            opacity: 1;
+            left: -15px;
+        }
+
+        .news-item:last-child { 
+            border-bottom: none; 
+        }
+
+        .news-index {
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-right: 15px;
+            min-width: 30px;
+            font-size: 1.4rem; 
+            line-height: 1.8;
+        }
+        .weiyu-section {
+            background: linear-gradient(135deg, #fff5fb 0%, #fffef5 100%);
+            border-left: 6px solid var(--primary-color);
+            margin: 25px 40px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.1);
+            position: relative;
+        }
+
+        .weiyu-section::before {
+            content: "💭";
+            position: absolute;
+            top: -10px;
+            right: 20px;
+            font-size: 2rem;
+        }
+
+        .weiyu-text {
+            font-size: 1.2rem; 
+            font-style: italic;
+            color: #555;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        #loading, .error-msg {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+            font-size: 1.3rem;
+        }
+
+        #loading::after {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--primary-color);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .error-msg { 
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            font-size: 11px;
+            color: #999;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 107, 157, 0.2);
+            box-shadow: 0 2px 8px rgba(255, 107, 157, 0.1);
+            z-index: 10;
+        }
+
+         @media (max-width: 600px) {
+            body { 
+                padding: 0; 
+                background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+                overflow-x: hidden;
+            }
+
+            .container { 
+                margin: 20px auto; 
+                width: 92%;
+                max-width: 92%;
+                left: auto;
+                transform: none;
+                background: var(--card-bg); 
+                box-shadow: var(--shadow-soft); 
+                border-radius: 20px; 
+                position: relative;
+            }
+
+            .container:hover {
+                transform: none;
+            }
+
+            .news-list, .header-content, .weiyu-section, .audio-player { 
+                padding-left: 20px; 
+                padding-right: 20px; 
+            }
+
+            .news-item { 
+                font-size: 1.1rem;             }
+
+            .main-title {
+                font-size: 1.8rem;
+            }
+
+            .header-content {
+                padding: 25px 20px 15px;
+            }
+
+            .audio-player, .weiyu-section {
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="status-display" class="status-badge" style="display:none;"></div>
+
+        <div id="loading">
+            正在加载今日早报...
+        </div>
+
+        <div id="content" style="display: none;">
+            <img id="head-img" class="header-image" src="" alt="Header">
+
+            <div class="header-content">
+                <span id="date-display" class="date-tag"></span>
+                <h1 class="main-title">每日早报</h1>
+            </div>
+
+            <div class="audio-player" id="audio-box" style="display: none;">
+                <audio id="audio-control" controls></audio>
+            </div>
+
+            <div class="weiyu-section">
+                <p id="weiyu-text" class="weiyu-text"></p>
+            </div>
+
+            <ul id="news-list" class="news-list">
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 修改点：指向静态 data.json 文件
+        const API_ENDPOINT = './data.json'; 
+        const CACHE_KEY = 'zaobao_local_data';
+        window.onload = function() {
+            initNews();
+        };
+
+        async function initNews() {
+            const loadingEl = document.getElementById('loading');
+            const contentEl = document.getElementById('content');
+            const statusEl = document.getElementById('status-display');
+
+            // 1. 尝试从本地缓存加载
+            const cachedDataStr = localStorage.getItem(CACHE_KEY);
+            let hasRenderedCache = false;
+
+            if (cachedDataStr) {
+                try {
+                    const cachedData = JSON.parse(cachedDataStr);
+                    const today = new Date().toISOString().split('T')[0]; 
+
+                    renderData(cachedData);
+                    hasRenderedCache = true;
+                    loadingEl.style.display = 'none';
+                    contentEl.style.display = 'block';
+
+                    if (cachedData.date === today) {
+                        console.log('Using local cache (Today)');
+                        statusEl.textContent = '已缓存';
+                        statusEl.style.display = 'block';
+                        return; 
+                    } else {
+                        console.log('Cache is old, fetching new...');
+                        statusEl.textContent = '更新中...';
+                        statusEl.style.display = 'block';
+                    }
+
+                } catch (e) {
+                    console.error('Cache parse error', e);
+                    localStorage.removeItem(CACHE_KEY);
+                }
+            }
+
+            // 2. 发起网络请求 (获取静态 data.json)
+            try {
+                // 添加时间戳防止浏览器缓存 data.json
+                const response = await fetch(`${API_ENDPOINT}?t=${new Date().getTime()}`);
+                const result = await response.json();
+
+                if (result.code === 200 || result.success === true) {
+                    renderData(result.data);
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
+                    loadingEl.style.display = 'none';
+                    contentEl.style.display = 'block';
+                    statusEl.style.display = 'none'; 
+                } else {
+                    if (!hasRenderedCache) {
+                        loadingEl.innerHTML = `<div class="error-msg">请求失败：${result.message}</div>`;
+                    }
+                }
+
+            } catch (error) {
+                console.error('Fetch error:', error);
+                if (!hasRenderedCache) {
+                    loadingEl.innerHTML = `<div class="error-msg">网络错误，请稍后重试</div>`;
+                }
+            }
+        }
+
+        function renderData(data) {
+            const headImg = document.getElementById('head-img');
+            if (data.head_image) {
+                headImg.src = data.head_image;
+                headImg.style.display = 'block';
+            } else {
+                headImg.style.display = 'none';
+            }
+
+            document.getElementById('date-display').textContent = data.date;
+
+            const audioBox = document.getElementById('audio-box');
+            const audioCtrl = document.getElementById('audio-control');
+            const currentSrc = audioCtrl.getAttribute('src');
+            if (data.audio) {
+                audioBox.style.display = 'block';
+                if (currentSrc !== data.audio) {
+                    audioCtrl.src = data.audio;
+                }
+            } else {
+                audioBox.style.display = 'none';
+            }
+
+            document.getElementById('weiyu-text').textContent = data.weiyu || "新的一天，加油！";
+
+            const newsList = document.getElementById('news-list');
+            newsList.innerHTML = '';
+
+            if (data.news && Array.isArray(data.news)) {
+                data.news.forEach(itemStr => {
+                    const li = document.createElement('li');
+                    li.className = 'news-item';                    const match = itemStr.match(/^(\d+、)(.*)/);
+                    if (match) {
+                        li.innerHTML = `<span class="news-index">${match[1]}</span><span>${match[2]}</span>`;
+                    } else {
+                        li.innerHTML = `<span>${itemStr}</span>`;
+                    }
+                    newsList.appendChild(li);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
