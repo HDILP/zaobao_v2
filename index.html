@@ -4,287 +4,557 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>早报 | Daily Morning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --sweet-pink: #ffaab2;          /* 你指定的颜色 */
-            --soft-pink: #fff0f1;           /* 极浅粉背景 */
-            --accent-yellow: #ffe66d;       /* 活力黄 */
-            --text-color: #7a5c5f;          /* 棕粉色文字，比纯黑更温柔 */
-            --card-bg: #ffffff;
-            --radius: 20px;
+            --ba-pink: #ffaab2;
+            --ba-pink-light: rgba(255, 170, 178, 0.18);
+            --ba-pink-mid: rgba(255, 170, 178, 0.35);
+            --ba-pink-border: rgba(255, 170, 178, 0.5);
+            --ba-yellow: #ffe88a;
+            --ba-yellow-soft: rgba(255, 232, 138, 0.7);
+            --ba-white-glass: rgba(255, 255, 255, 0.55);
+            --ba-white-strong: rgba(255, 255, 255, 0.82);
+            --ba-text: #6b4a52;
+            --ba-text-soft: #b08a8f;
+            --ba-shadow: rgba(255, 140, 155, 0.25);
+            --radius-lg: 22px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            font-family: "M PLUS Rounded 1c", "PingFang SC", "Hiragino Sans GB", sans-serif;
             background: transparent;
             margin: 0;
-            padding: 15px;
-            color: var(--text-color);
+            padding: 12px;
+            color: var(--ba-text);
+            min-height: 100vh;
         }
 
-        /* 整体容器 */
+        /* ─── 主容器：磨砂玻璃感 ─── */
         .container {
             max-width: 100%;
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            box-shadow: 0 10px 30px rgba(255, 170, 178, 0.2);
+            background: var(--ba-white-glass);
+            backdrop-filter: blur(16px) saturate(1.4);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid rgba(255, 255, 255, 0.75);
+            box-shadow:
+                0 8px 32px var(--ba-shadow),
+                inset 0 1px 0 rgba(255,255,255,0.9);
             overflow: hidden;
-            border: 3px solid var(--soft-pink);
+            position: relative;
         }
 
-        /* 头部：圆润可爱 */
+        /* 顶部装饰光晕 */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -30px;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, rgba(255,170,178,0.4) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ─── 头部 ─── */
         .header {
-            background: var(--sweet-pink);
-            padding: 25px 20px;
+            background: linear-gradient(135deg, var(--ba-pink) 0%, #ffbfc5 60%, #ffd4d8 100%);
+            padding: 20px 20px 28px;
             text-align: center;
             position: relative;
+            overflow: hidden;
+        }
+
+        /* 头部背景纹理圆 */
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -20px; right: -20px;
+            width: 100px; height: 100px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -30px; left: -15px;
+            width: 80px; height: 80px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+        }
+
+        /* 头部装饰光点 */
+        .header-deco {
+            position: absolute;
+            top: 10px; left: 0; right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 15px;
+            pointer-events: none;
+        }
+        .header-deco span {
+            color: rgba(255,255,255,0.6);
+            font-size: 10px;
+            letter-spacing: 3px;
+        }
+
+        .header-halo {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 44px;
+            height: 10px;
+            border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 50%;
+            animation: haloFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes haloFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.7; }
+            50%       { transform: translateX(-50%) translateY(-3px); opacity: 1; }
         }
 
         .header h1 {
-            margin: 0;
-            color: white;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.05);
-        }
-
-        #date-display {
-            display: inline-block;
-            margin-top: 10px;
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 4px 15px;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: bold;
-        }
-
-        /* 装饰性小圆点 */
-        .header::after {
-            content: "● ● ●";
-            position: absolute;
-            bottom: 8px;
-            left: 0;
-            right: 0;
-            color: white;
-            opacity: 0.5;
-            font-size: 8px;
-        }
-
-        /* 语录：气泡感 */
-        .weiyu-box {
-            padding: 20px;
-            background: var(--soft-pink);
-            margin: 15px;
-            border-radius: var(--radius);
-            position: relative;
-        }
-
-        .weiyu-box::before {
-            content: "“";
-            position: absolute;
-            top: 5px;
-            left: 10px;
-            font-size: 2rem;
-            color: var(--sweet-pink);
-            opacity: 0.4;
-        }
-
-        #weiyu-text {
-            margin: 0;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            color: var(--text-color);
+            margin: 18px 0 0;
+            color: #fff;
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-shadow: 0 2px 8px rgba(200,80,95,0.25), 0 0 20px rgba(255,255,255,0.4);
             position: relative;
             z-index: 1;
         }
 
-        /* 音频控制台 */
+        .header-sub {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.85);
+            letter-spacing: 2px;
+            margin-top: 3px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 日期徽章 */
+        #date-display {
+            display: inline-block;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.28);
+            backdrop-filter: blur(4px);
+            color: #fff;
+            padding: 5px 18px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid rgba(255,255,255,0.5);
+            letter-spacing: 1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 波浪分隔 */
+        .wave-sep {
+            display: block;
+            width: 100%;
+            height: 18px;
+            background: var(--ba-white-glass);
+            clip-path: ellipse(55% 100% at 50% 100%);
+            margin-top: -1px;
+        }
+
+        /* ─── 语录气泡 ─── */
+        .weiyu-box {
+            margin: 14px 14px 10px;
+            padding: 14px 18px 14px 22px;
+            background: var(--ba-white-strong);
+            border-radius: var(--radius-md);
+            border: 1.5px solid var(--ba-pink-border);
+            position: relative;
+            box-shadow: 0 2px 12px rgba(255,170,178,0.1);
+        }
+
+        .weiyu-box::before {
+            content: "❝";
+            position: absolute;
+            top: -6px; left: 12px;
+            font-size: 1.6rem;
+            color: var(--ba-pink);
+            line-height: 1;
+        }
+
+        .weiyu-label {
+            font-size: 0.65rem;
+            color: var(--ba-pink);
+            letter-spacing: 2px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        #weiyu-text {
+            margin: 0;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            color: var(--ba-text);
+            font-family: "Noto Serif SC", serif;
+            font-style: italic;
+        }
+
+        /* 右上角五角星 */
+        .weiyu-box::after {
+            content: "✦";
+            position: absolute;
+            top: 10px; right: 14px;
+            color: var(--ba-yellow);
+            font-size: 0.9rem;
+            animation: starTwinkle 2s ease-in-out infinite;
+        }
+
+        @keyframes starTwinkle {
+            0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+            50%       { opacity: 0.5; transform: scale(0.8) rotate(20deg); }
+        }
+
+        /* ─── 音频 ─── */
         .audio-container {
-            padding: 0 20px 15px;
+            padding: 0 14px 12px;
+        }
+
+        .audio-wrap {
+            background: var(--ba-white-strong);
+            border: 1.5px solid var(--ba-pink-border);
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .audio-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
         }
 
         audio {
-            width: 100%;
-            height: 40px;
-            filter: sepia(20%) saturate(150%) hue-rotate(300deg); /* 给播放器染上粉色调 */
+            flex: 1;
+            height: 32px;
+            filter: sepia(30%) saturate(180%) hue-rotate(295deg);
         }
 
-        /* 新闻列表 */
+        /* ─── 分区标题 ─── */
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 14px;
+            margin: 4px 0 10px;
+        }
+
+        .section-title .line {
+            flex: 1;
+            height: 1.5px;
+            background: linear-gradient(90deg, var(--ba-pink-border), transparent);
+        }
+
+        .section-title .line.right {
+            background: linear-gradient(90deg, transparent, var(--ba-pink-border));
+        }
+
+        .section-title span {
+            font-size: 0.7rem;
+            color: var(--ba-pink);
+            letter-spacing: 3px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* ─── 新闻列表 ─── */
         .news-list {
-            padding: 0 15px 20px;
+            padding: 0 14px 6px;
             list-style: none;
             margin: 0;
         }
 
         .news-item {
-            background: #fff;
-            margin-bottom: 12px;
-            padding: 12px 15px;
-            border-radius: 15px;
+            background: var(--ba-white-strong);
+            margin-bottom: 9px;
+            padding: 11px 14px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            border: 1px solid #fff5f6;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(255, 170, 178, 0.05);
+            gap: 11px;
+            border: 1.5px solid rgba(255,255,255,0.8);
+            box-shadow: 0 2px 8px rgba(255,170,178,0.06);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .news-item::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--ba-pink), #ffcdd1);
+            border-radius: 3px 0 0 3px;
+            opacity: 0;
+            transition: opacity 0.25s ease;
         }
 
         .news-item:hover {
-            transform: scale(1.02);
-            box-shadow: 0 5px 15px rgba(255, 170, 178, 0.15);
+            transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(255,170,178,0.18);
+            border-color: var(--ba-pink-border);
         }
 
+        .news-item:hover::before {
+            opacity: 1;
+        }
+
+        /* 序号徽章 */
         .news-index {
             flex-shrink: 0;
             width: 22px;
             height: 22px;
-            background: var(--accent-yellow);
-            color: #947600;
-            border-radius: 50%;
+            background: linear-gradient(135deg, var(--ba-yellow), #ffd55a);
+            color: #8a6800;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-top: 2px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            margin-top: 1px;
+            box-shadow: 0 2px 5px rgba(200,160,0,0.2);
         }
 
         .news-content {
-            font-size: 0.9rem;
-            line-height: 1.6;
+            font-size: 0.86rem;
+            line-height: 1.65;
+            color: var(--ba-text);
         }
 
-        /* 加载动画 */
+        /* ─── 加载动画 ─── */
         #loading {
-            padding: 50px;
+            padding: 45px 20px;
             text-align: center;
-            color: var(--sweet-pink);
-            font-weight: bold;
+            color: var(--ba-text-soft);
         }
 
-        .loading-dots:after {
-            content: '...';
-            animation: dots 1.5s infinite;
+        .loading-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
         }
 
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60% { content: '...'; }
+        .loading-halo {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--ba-pink-border);
+            border-top-color: var(--ba-pink);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
 
-        /* 自定义滚动条（针对 Chrome） */
-        ::-webkit-scrollbar { width: 5px; }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.5; }
+        }
+
+        /* ─── 底部页脚 ─── */
+        .footer {
+            text-align: center;
+            padding: 10px 20px 16px;
+            font-size: 0.72rem;
+            color: var(--ba-text-soft);
+            letter-spacing: 1px;
+        }
+
+        .footer-stars {
+            color: var(--ba-pink);
+            letter-spacing: 4px;
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.65rem;
+        }
+
+        /* ─── 入场动画 ─── */
+        #content {
+            animation: fadeUp 0.5s ease-out;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .news-item {
+            animation: slideIn 0.4s ease-out both;
+        }
+        .news-item:nth-child(1) { animation-delay: 0.05s; }
+        .news-item:nth-child(2) { animation-delay: 0.10s; }
+        .news-item:nth-child(3) { animation-delay: 0.15s; }
+        .news-item:nth-child(4) { animation-delay: 0.20s; }
+        .news-item:nth-child(5) { animation-delay: 0.25s; }
+        .news-item:nth-child(n+6) { animation-delay: 0.30s; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--sweet-pink); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--ba-pink-mid); border-radius: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>✨ 每日早报 ✨</h1>
-            <div id="date-display">2026-02-17</div>
+<div class="container">
+
+    <!-- 头部 -->
+    <div class="header">
+        <div class="header-halo"></div>
+        <div class="header-deco">
+            <span>✦</span><span>✦</span>
         </div>
+        <h1>每 日 早 报</h1>
+        <div class="header-sub">D A I L Y · M O R N I N G · N E W S</div>
+        <div id="date-display">loading...</div>
+    </div>
 
-        <div id="loading" class="loading-dots">正在为你打包资讯</div>
-
-        <div id="content" style="display: none;">
-            <div class="weiyu-box">
-                <p id="weiyu-text"></p>
-            </div>
-
-            <div class="audio-container" id="audio-box" style="display: none;">
-                <audio id="audio-control" controls></audio>
-            </div>
-
-            <ul id="news-list" class="news-list">
-                </ul>
-            
-            <div style="text-align: center; padding-bottom: 20px; font-size: 12px; color: #ccc;">
-                今日份美好已送达 ☁️
-            </div>
+    <!-- loading -->
+    <div id="loading">
+        <div class="loading-inner">
+            <div class="loading-halo"></div>
+            <div class="loading-text">正在为你打包资讯 ♡</div>
         </div>
     </div>
 
-    <script>
-        const API_ENDPOINT = './data.json'; 
-        const CACHE_KEY = 'zaobao_sweet_style';
+    <!-- 主内容 -->
+    <div id="content" style="display: none;">
 
-        window.onload = function() {
-            initNews();
-        };
+        <!-- 语录 -->
+        <div class="weiyu-box">
+            <div class="weiyu-label">✦ 今日语录</div>
+            <p id="weiyu-text"></p>
+        </div>
 
-        async function initNews() {
-            const loadingEl = document.getElementById('loading');
-            const contentEl = document.getElementById('content');
+        <!-- 音频 -->
+        <div class="audio-container" id="audio-box" style="display: none;">
+            <div class="audio-wrap">
+                <span class="audio-icon">🎵</span>
+                <audio id="audio-control" controls></audio>
+            </div>
+        </div>
 
-            // 1. 尝试缓存
-            const cachedDataStr = localStorage.getItem(CACHE_KEY);
-            let hasRenderedCache = false;
+        <!-- 新闻标题 -->
+        <div class="section-title">
+            <div class="line"></div>
+            <span>✦ 今日要闻 ✦</span>
+            <div class="line right"></div>
+        </div>
 
-            if (cachedDataStr) {
-                try {
-                    const cachedData = JSON.parse(cachedDataStr);
-                    renderData(cachedData);
-                    hasRenderedCache = true;
-                    loadingEl.style.display = 'none';
-                    contentEl.style.display = 'block';
-                } catch (e) { console.error(e); }
-            }
+        <!-- 新闻列表 -->
+        <ul id="news-list" class="news-list"></ul>
 
-            // 2. 实时数据
+        <!-- 页脚 -->
+        <div class="footer">
+            <span class="footer-stars">✦ ✦ ✦</span>
+            今日份美好已送达，请查收 ☁️
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const API_ENDPOINT = './data.json';
+    const CACHE_KEY = 'zaobao_sweet_style';
+
+    window.onload = function () { initNews(); };
+
+    async function initNews() {
+        const loadingEl = document.getElementById('loading');
+        const contentEl = document.getElementById('content');
+        let hasRenderedCache = false;
+
+        const cachedDataStr = localStorage.getItem(CACHE_KEY);
+        if (cachedDataStr) {
             try {
-                const response = await fetch(`${API_ENDPOINT}?t=${new Date().getTime()}`);
-                const result = await response.json();
-
-                if (result.code === 200 || result.success === true) {
-                    renderData(result.data);
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
-                    loadingEl.style.display = 'none';
-                    contentEl.style.display = 'block';
-                }
-            } catch (error) {
-                if (!hasRenderedCache) {
-                    loadingEl.textContent = "哎呀，网络开小差了 (っ °Д °;)っ";
-                }
-            }
+                renderData(JSON.parse(cachedDataStr));
+                hasRenderedCache = true;
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+            } catch (e) { console.error(e); }
         }
 
-        function renderData(data) {
-            document.getElementById('date-display').textContent = data.date;
-            document.getElementById('weiyu-text').textContent = data.weiyu || "生活明朗，万物可爱。";
-
-            const audioBox = document.getElementById('audio-box');
-            const audioCtrl = document.getElementById('audio-control');
-            if (data.audio) {
-                audioBox.style.display = 'block';
-                if (audioCtrl.src !== data.audio) audioCtrl.src = data.audio;
+        try {
+            const response = await fetch(`${API_ENDPOINT}?t=${Date.now()}`);
+            const result = await response.json();
+            if (result.code === 200 || result.success === true) {
+                renderData(result.data);
+                localStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
             }
-
-            const newsList = document.getElementById('news-list');
-            newsList.innerHTML = '';
-
-            if (data.news) {
-                data.news.forEach(itemStr => {
-                    const li = document.createElement('li');
-                    li.className = 'news-item';
-                    
-                    // 分离数字序号
-                    const match = itemStr.match(/^(\d+)[、.](.*)/);
-                    if (match) {
-                        li.innerHTML = `
-                            <div class="news-index">${match[1]}</div>
-                            <div class="news-content">${match[2]}</div>
-                        `;
-                    } else {
-                        li.innerHTML = `<div class="news-index">❤</div><div class="news-content">${itemStr}</div>`;
-                    }
-                    newsList.appendChild(li);
-                });
+        } catch (error) {
+            if (!hasRenderedCache) {
+                document.querySelector('.loading-text').textContent = "哎呀，网络开小差了 (っ °Д °;)っ";
+                document.querySelector('.loading-halo').style.borderTopColor = '#ccc';
             }
         }
-    </script>
+    }
+
+    function renderData(data) {
+        document.getElementById('date-display').textContent = data.date || '...';
+        document.getElementById('weiyu-text').textContent = data.weiyu || "生活明朗，万物可爱。";
+
+        const audioBox = document.getElementById('audio-box');
+        const audioCtrl = document.getElementById('audio-control');
+        if (data.audio) {
+            audioBox.style.display = 'block';
+            if (audioCtrl.src !== data.audio) audioCtrl.src = data.audio;
+        }
+
+        const newsList = document.getElementById('news-list');
+        newsList.innerHTML = '';
+
+        if (data.news) {
+            data.news.forEach(itemStr => {
+                const li = document.createElement('li');
+                li.className = 'news-item';
+                const match = itemStr.match(/^(\d+)[、.](.*)/);
+                if (match) {
+                    li.innerHTML = `
+                        <div class="news-index">${match[1]}</div>
+                        <div class="news-content">${match[2].trim()}</div>
+                    `;
+                } else {
+                    li.innerHTML = `<div class="news-index">♡</div><div class="news-content">${itemStr}</div>`;
+                }
+                newsList.appendChild(li);
+            });
+        }
+    }
+</script>
 </body>
 </html>
