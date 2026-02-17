@@ -1,429 +1,494 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>早报 | Blue Archive Style</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet"/>
     <style>
         :root {
             /* 核心配色 - Blue Archive Momo Theme */
             --ba-pink: #ffaab2;
             --ba-pink-dark: #ff8e99;
             --ba-pink-light: #ffeef0;
-            --ba-blue-accent: #6AD9F5; /* 经典的BA青蓝色点缀 */
-            --ba-text: #4c5b70;        /* 更有质感的蓝灰色，不使用纯黑 */
+            --ba-blue-accent: #6AD9F5;
+            --ba-text: #3e4b60;
             --ba-text-light: #8a9bb3;
-            --glass-bg: rgba(255, 255, 255, 0.75); /* 主体透明度，可在此调整 */
-            --glass-border: rgba(255, 255, 255, 0.9);
-            --shadow: 0 8px 32px rgba(255, 170, 178, 0.15);
+            /* 透明度调节以适应 iframe 背景 */
+            --glass-bg: rgba(255,255,255,0.68); /* 可按需降低以更多露出博客背景 */
+            --glass-border: rgba(255,255,255,0.95);
+            --shadow: 0 12px 36px rgba(255,170,178,0.12);
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --gap: 16px;
+            --max-width: 720px;
+            --line: 1.55;
+            --accent-gradient: linear-gradient(90deg, rgba(255,170,178,0.25), rgba(106,217,245,0.12));
         }
 
-        * { box-sizing: border-box; user-select: none; }
-
+        /* reset + base */
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        html,body { height:100%; }
         body {
             margin: 0;
-            padding: 20px;
-            font-family: "M PLUS Rounded 1c", sans-serif;
+            padding: 24px;
+            font-family: "M PLUS Rounded 1c", "Noto Sans SC", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
             color: var(--ba-text);
-            /* body 背景设为透明，以便 iframe 透出博客背景 */
-            background: transparent; 
-            min-height: 100vh;
+            background: transparent; /* 允许 iframe 背景显现 */
             display: flex;
             justify-content: center;
+            -webkit-font-variant-ligatures: none;
         }
 
-        /* ─── 主容器：科技感卡片 ─── */
+        /* container */
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: var(--max-width);
             background: var(--glass-bg);
             backdrop-filter: blur(12px) saturate(120%);
             -webkit-backdrop-filter: blur(12px) saturate(120%);
-            border-radius: 16px;
-            border: 2px solid #fff;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--glass-border);
             box-shadow: var(--shadow);
+            overflow: visible;
             position: relative;
-            overflow: hidden;
-            /* BA 风格左上角装饰斜角 */
-            clip-path: polygon(
-                0 0, 
-                100% 0, 
-                100% 100%, 
-                20px 100%, 
-                0 calc(100% - 20px)
-            );
+            padding: 0;
+            display: grid;
+            grid-template-rows: auto auto 1fr;
         }
 
-        /* 顶部装饰条 */
+        /* 左上装饰斜角（更柔和） */
+        .container::before {
+            content: "";
+            position: absolute;
+            left: 0; top: 0;
+            width: 100px; height: 100px;
+            background: linear-gradient(135deg, rgba(255,170,178,0.06), rgba(106,217,245,0.03));
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+            pointer-events: none;
+            border-top-left-radius: calc(var(--radius-lg) - 6px);
+        }
+
+        /* 顶部细条增强 */
         .top-deco-bar {
-            height: 6px;
+            height: 8px;
             background: repeating-linear-gradient(
                 45deg,
                 var(--ba-pink),
-                var(--ba-pink) 10px,
-                #fff 10px,
-                #fff 20px
+                var(--ba-pink) 12px,
+                #fff 12px,
+                #fff 24px
             );
-            border-bottom: 2px solid #fff;
+            border-bottom: 1px solid rgba(255,255,255,0.6);
+            border-top-left-radius: var(--radius-lg);
+            border-top-right-radius: var(--radius-lg);
         }
 
-        /* ─── 头部区域 ─── */
+        /* header area - grid */
         .header {
-            padding: 25px 20px 15px;
-            display: flex;
+            padding: 18px 18px 14px 18px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: var(--gap);
             align-items: center;
-            justify-content: space-between;
             position: relative;
         }
 
-        /* 标题组 */
+        .title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
         .title-group h1 {
             margin: 0;
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 800;
             color: var(--ba-text);
             line-height: 1;
+            letter-spacing: 1px;
             font-style: italic;
-            text-shadow: 2px 2px 0px #fff;
-        }
-        
-        .title-group .sub-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--ba-pink);
-            letter-spacing: 2px;
-            margin-top: 4px;
-            text-transform: uppercase;
+            text-shadow: 0 1px 0 #fff;
         }
 
-        /* 日期胶囊 */
+        .title-group .sub-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ba-pink);
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            opacity: 0.95;
+        }
+
+        /* 日期胶囊（更柔和 + icon） */
         .date-capsule {
-            background: #fff;
-            padding: 6px 16px;
-            border-radius: 50px;
-            font-size: 14px;
+            background: linear-gradient(180deg, #fff, rgba(255,255,255,0.95));
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--ba-pink-dark);
-            border: 2px solid var(--ba-pink-light);
-            box-shadow: 0 4px 10px rgba(255,170,178, 0.2);
-            position: relative;
-            z-index: 2;
+            border: 1px solid rgba(255,170,178,0.12);
+            box-shadow: 0 6px 18px rgba(106,217,245,0.06);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
         }
-        
-        /* 装饰光环 (Halo) */
+
+        .date-capsule svg { width:18px; height:18px; opacity:0.9; transform:translateY(-1px); }
+
+        /* halo deco (保留，但更轻) */
         .halo-deco {
             position: absolute;
-            right: -20px;
-            top: -30px;
-            width: 120px;
-            height: 120px;
-            border: 2px solid rgba(106, 217, 245, 0.3); /* 青色光环 */
+            right: 6px;
+            top: -20px;
+            width: 86px; height: 86px;
             border-radius: 50%;
             pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(106,217,245,0.08), transparent 40%);
         }
         .halo-deco::before {
             content: '';
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 70%; height: 70%;
-            border: 4px dashed rgba(255, 170, 178, 0.4);
+            width: 60%; height: 60%;
+            border: 3px dashed rgba(255,170,178,0.28);
             border-radius: 50%;
-            animation: spin 20s linear infinite;
+            animation: spin 18s linear infinite;
         }
 
-        /* ─── 语录框：Momotalk 风格 ─── */
+        /* weiyu card (Momotalk 风格) */
         .weiyu-wrapper {
-            padding: 10px 20px;
+            padding: 12px 18px;
         }
-        
         .weiyu-card {
-            background: rgba(255,255,255,0.85);
-            border-left: 5px solid var(--ba-pink);
-            border-radius: 4px 12px 12px 4px;
-            padding: 15px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.90));
+            border-left: 6px solid var(--ba-pink);
+            border-radius: var(--radius-md);
+            padding: 14px;
             position: relative;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.03);
+            display:flex;
+            gap:12px;
+            align-items:flex-start;
         }
-
+        .weiyu-avatar {
+            width:46px; height:46px; flex:0 0 46px;
+            border-radius:10px;
+            background: var(--accent-gradient);
+            display:flex;align-items:center;justify-content:center;
+            box-shadow: inset 0 -6px 18px rgba(255,255,255,0.25);
+        }
+        .weiyu-avatar svg { width:34px; height:34px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.06)); }
         .weiyu-label {
             position: absolute;
             top: -10px;
-            left: 10px;
+            left: 12px;
             background: var(--ba-pink);
             color: #fff;
             font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            transform: rotate(-2deg);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 800;
+            transform: rotate(-3deg);
         }
-
         #weiyu-text {
             margin: 0;
-            font-size: 14px;
-            line-height: 1.6;
-            color: var(--ba-text);
-            font-weight: 500;
-        }
-
-        /* ─── 音频播放器 ─── */
-        .audio-wrapper {
-            padding: 5px 20px;
-            display: none; /* JS控制显示 */
-        }
-        audio {
-            width: 100%;
-            height: 36px;
-            border-radius: 20px;
-        }
-        /* 自定义 webkit 播放器颜色 */
-        audio::-webkit-media-controls-panel {
-            background: var(--ba-pink-light);
-        }
-
-        /* ─── 新闻列表 ─── */
-        .news-section {
-            padding: 10px 20px 30px;
-        }
-        
-        .section-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            gap: 10px;
-        }
-        .section-deco-dot {
-            width: 8px; height: 8px;
-            background: var(--ba-blue-accent);
-            transform: rotate(45deg);
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--ba-text);
-        }
-        .section-line {
-            flex: 1;
-            height: 2px;
-            background: repeating-linear-gradient(90deg, var(--ba-pink-light), var(--ba-pink-light) 4px, transparent 4px, transparent 8px);
-        }
-
-        .news-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .news-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 12px;
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255,255,255,0.8);
-            border-radius: 8px;
-            padding: 10px;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* 悬停效果：轻微上浮+发光 */
-        .news-item:hover {
-            transform: translateX(5px) translateY(-2px);
-            background: #fff;
-            box-shadow: 3px 3px 0px var(--ba-pink-light);
-            border-color: var(--ba-pink);
-        }
-
-        /* 序号样式 */
-        .news-index {
-            flex-shrink: 0;
-            width: 24px;
-            height: 24px;
-            background: var(--ba-text);
-            color: #fff;
-            font-weight: 800;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            margin-right: 12px;
-            margin-top: 1px;
-            /* 变成斜的 */
-            transform: skewX(-10deg);
-        }
-        .news-index span {
-            transform: skewX(10deg); /* 数字正回来 */
-        }
-        
-        /* 前3名特殊颜色 */
-        .news-item:nth-child(1) .news-index { background: var(--ba-pink); }
-        .news-item:nth-child(2) .news-index { background: var(--ba-pink-dark); opacity: 0.9; }
-        .news-item:nth-child(3) .news-index { background: var(--ba-pink-dark); opacity: 0.8; }
-
-        .news-content {
             font-size: 14px;
             line-height: 1.5;
             color: var(--ba-text);
             font-weight: 500;
         }
 
-        /* ─── 底部 & Loading ─── */
-        .footer {
-            text-align: center;
-            font-size: 11px;
-            color: var(--ba-text-light);
-            padding-bottom: 15px;
-            opacity: 0.7;
+        /* audio */
+        .audio-wrapper {
+            padding: 6px 18px 12px 18px;
+            display: none;
+        }
+        audio { width: 100%; height: 40px; border-radius: 999px; }
+
+        /* news section */
+        .news-section {
+            padding: 8px 18px 18px 18px;
+        }
+        .section-header {
+            display:flex; align-items:center; gap:12px; margin-bottom:14px;
+        }
+        .section-deco-dot { width:10px; height:10px; background:var(--ba-blue-accent); transform: rotate(45deg); border-radius:2px; }
+        .section-title { font-size:15px; font-weight:800; color:var(--ba-text); }
+        .section-line { flex:1; height:2px; background: repeating-linear-gradient(90deg, var(--ba-pink-light), var(--ba-pink-light) 6px, transparent 6px, transparent 12px); border-radius:2px; }
+
+        .news-list { list-style:none; padding:0; margin:0; display:grid; gap:10px; }
+
+        .news-item {
+            display: grid;
+            grid-template-columns: 36px 1fr;
+            gap: 12px;
+            align-items: start;
+            padding: 12px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.86));
+            border: 1px solid rgba(255,255,255,0.85);
+            transition: transform 280ms cubic-bezier(.22,1,.36,1), box-shadow 280ms;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }
 
-        #loading {
-            padding: 50px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--ba-pink);
+        .news-item:focus { outline: none; box-shadow: 0 8px 24px rgba(106,217,245,0.08); transform: translateY(-4px); }
+        .news-item:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(255,170,178,0.08); border-color: var(--ba-pink); }
+
+        .news-index {
+            width:36px; height:36px; background:var(--ba-text); color:#fff; border-radius:8px;
+            display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;
+            transform: skewX(-8deg);
         }
-        
-        /* Loading 动画 - 模仿 BA 连接圈 */
-        .loading-halo {
-            width: 40px; height: 40px;
-            border: 4px solid var(--ba-pink-light);
-            border-top-color: var(--ba-pink);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 15px;
+        .news-index span { transform: skewX(8deg); }
+
+        .news-content {
+            font-size:14px; line-height: var(--line); color:var(--ba-text); font-weight:500;
+            display:flex; flex-direction:column; gap:8px;
         }
+
+        .news-meta {
+            display:flex; gap:8px; align-items:center; font-size:12px; color:var(--ba-text-light);
+        }
+
+        .badge {
+            background: rgba(106,217,245,0.12);
+            color: var(--ba-blue-accent);
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-weight:700;
+            font-size:12px;
+            border: 1px solid rgba(106,217,245,0.06);
+        }
+
+        .news-excerpt { color: var(--ba-text); font-size:13px; max-height: 3.6em; overflow: hidden; text-overflow: ellipsis; }
+        .news-item[aria-expanded="true"] .news-excerpt { max-height: 100vh; }
+        .more-tag {
+            font-size:12px; color:var(--ba-pink-dark); font-weight:700; margin-left:auto; white-space:nowrap;
+        }
+
+        /* footer */
+        .footer { text-align:center; font-size:12px; color:var(--ba-text-light); padding: 12px 18px 18px; opacity:0.85; }
+
+        /* loading */
+        #loading { padding: 36px; display:flex; flex-direction:column; align-items:center; gap:12px; color:var(--ba-pink); }
+        .loading-halo { width:44px; height:44px; border:4px solid var(--ba-pink-light); border-top-color:var(--ba-pink); border-radius:50%; animation:spin 1s linear infinite; }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* 入场动画 */
-        .fade-in-up {
-            animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-            opacity: 0;
-            transform: translateY(20px);
+        /* momo sticker - 可爱小贴纸 */
+        .momo-sticker {
+            position: absolute;
+            right: 18px;
+            bottom: -8px;
+            width: 110px;
+            height: 110px;
+            pointer-events: none;
+            transform-origin: center;
+            animation: floatY 6s ease-in-out infinite;
+            z-index: 3;
         }
-        
-        @keyframes fadeInUp {
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes floatY {
+            0% { transform: translateY(0) rotate(-2deg); }
+            50% { transform: translateY(-8px) rotate(2deg); }
+            100% { transform: translateY(0) rotate(-2deg); }
         }
 
-        /* 滚动条美化 */
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--ba-pink-light); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--ba-pink); }
+        /* responsive */
+        @media (max-width:700px) {
+            body { padding: 12px; }
+            .container { max-width: 100%; }
+            .momo-sticker { width: 86px; height:86px; right:14px; bottom:-6px; }
+            .title-group h1 { font-size: 22px; }
+        }
 
+        /* prefer-reduced-motion respect */
+        @media (prefers-reduced-motion: reduce) {
+            .halo-deco::before, .momo-sticker, .weiyu-avatar, .news-item, .loading-halo { animation: none !important; transition: none !important; }
+        }
+
+        /* 简易可聚焦样式（键盘友好） */
+        .news-item:focus-visible { outline: 3px solid rgba(106,217,245,0.18); border-radius:12px; }
     </style>
 </head>
 <body>
+<div class="container" role="region" aria-label="早报 — Blue Archive 风格">
+    <div class="top-deco-bar" aria-hidden="true"></div>
 
-<div class="container">
-    <div class="top-deco-bar"></div>
-    
     <div class="header">
-        <div class="halo-deco"></div> <div class="title-group">
-            <h1>DAILY NEWS</h1>
-            <div class="sub-title">Schale Office // Morning Brief</div>
-        </div>
-        <div class="date-capsule" id="date-display">System Check...</div>
-    </div>
+        <div class="halo-deco" aria-hidden="true"></div>
 
-    <div id="loading">
-        <div class="loading-halo"></div>
-        <div style="font-weight: 700; letter-spacing: 1px;">CONNECTING...</div>
-    </div>
-
-    <div id="content" style="display: none;">
-        
-        <div class="weiyu-wrapper fade-in-up" style="animation-delay: 0.1s;">
-            <div class="weiyu-card">
-                <div class="weiyu-label">MomoTalk</div>
-                <p id="weiyu-text">Loading thoughts...</p>
+        <div style="display:flex;align-items:center;gap:12px;">
+            <div class="title-group">
+                <h1>DAILY NEWS</h1>
+                <div class="sub-title">Schale Office · Morning Brief</div>
             </div>
         </div>
 
-        <div class="audio-wrapper fade-in-up" id="audio-box" style="animation-delay: 0.2s;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div class="date-capsule" id="date-display" aria-live="polite">
+                <!-- 小日历 icon -->
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="5" width="18" height="16" rx="2" stroke="#ff8e99" stroke-width="1.2" fill="white" />
+                    <path d="M16 3v4M8 3v4" stroke="#ff8e99" stroke-width="1.2" stroke-linecap="round"/>
+                    <path d="M7 11h10" stroke="#ffd6db" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                System Check...
+            </div>
+        </div>
+    </div>
+
+    <!-- 加一个萌贴纸（SVG，轻量） -->
+    <svg class="momo-sticker" viewBox="0 0 128 128" aria-hidden="true">
+        <defs>
+            <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.85"/><stop offset="1" stop-color="#ffeef0" stop-opacity="0.95"/></linearGradient>
+        </defs>
+        <g transform="translate(8,8)">
+            <ellipse cx="56" cy="56" rx="56" ry="56" fill="url(#g1)" stroke="#ffd6db" stroke-width="2"/>
+            <!-- 简单可爱脸 -->
+            <circle cx="42" cy="48" r="6" fill="#ff9fb0"/>
+            <circle cx="70" cy="48" r="6" fill="#ff9fb0"/>
+            <path d="M40 72c6 6 18 6 24 0" stroke="#ff8e99" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <!-- 小蓝花 -->
+            <g transform="translate(86,18) scale(0.9)">
+                <circle cx="3" cy="3" r="3.2" fill="#6ad9f5"/>
+                <circle cx="-1" cy="-2" r="2.2" fill="#6ad9f5"/>
+                <circle cx="7" cy="-1" r="2.2" fill="#bfdff6"/>
+            </g>
+        </g>
+    </svg>
+
+    <div id="loading">
+        <div class="loading-halo" aria-hidden="true"></div>
+        <div style="font-weight:700; letter-spacing:1px;">CONNECTING...</div>
+        <div style="font-size:12px; color:var(--ba-text-light); margin-top:6px;">正在与数据源同步，若加载较慢可先查看本地缓存</div>
+    </div>
+
+    <div id="content" style="display:none;">
+        <div class="weiyu-wrapper">
+            <div class="weiyu-card">
+                <div class="weiyu-avatar" aria-hidden="true">
+                    <!-- 简单头像SVG -->
+                    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <circle cx="24" cy="18" r="10" fill="#ffd6db"/>
+                        <rect x="6" y="30" width="36" height="10" rx="4" fill="#fff" opacity="0.6"/>
+                    </svg>
+                </div>
+
+                <div style="flex:1; min-width:0;">
+                    <div class="weiyu-label">MomoTalk</div>
+                    <p id="weiyu-text">Loading thoughts...</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="audio-wrapper" id="audio-box">
             <audio id="audio-control" controls></audio>
         </div>
 
-        <div class="news-section">
-            <div class="section-header fade-in-up" style="animation-delay: 0.2s;">
-                <div class="section-deco-dot"></div>
-                <div class="section-title">NEWS FEED</div>
-                <div class="section-line"></div>
+        <div class="news-section" aria-labelledby="news-title">
+            <div class="section-header">
+                <div class="section-deco-dot" aria-hidden="true"></div>
+                <div id="news-title" class="section-title">NEWS FEED</div>
+                <div class="section-line" aria-hidden="true"></div>
             </div>
 
-            <ul id="news-list" class="news-list">
-                </ul>
+            <ul id="news-list" class="news-list" role="list">
+                <!-- JS 填充 -->
+            </ul>
         </div>
 
-        <div class="footer fade-in-up" style="animation-delay: 0.8s;">
-            Designed for Sensei · Have a nice day
-        </div>
+        <div class="footer">Designed for Sensei · Have a nice day</div>
     </div>
 </div>
 
 <script>
-    // 保持原有逻辑不变，仅调整渲染 HTML 的结构
-    const API_ENDPOINT = './data.json'; 
-    const CACHE_KEY = 'zaobao_ba_style';
+    // 保持原逻辑，加入增强的渲染与交互（折叠、键盘可访问、友好中文日期）
+    const API_ENDPOINT = './data.json';
+    const CACHE_KEY = 'zaobao_ba_style_v2';
 
     window.onload = function () { initNews(); };
+
+    function formatChineseDate(d) {
+        // 输出：2026年2月17日 星期二
+        const weekdayMap = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const day = d.getDate();
+        const wd = weekdayMap[d.getDay()];
+        return `${y}年${m}月${day}日 · ${wd}`;
+    }
 
     async function initNews() {
         const loadingEl = document.getElementById('loading');
         const contentEl = document.getElementById('content');
         let hasRenderedCache = false;
 
-        // 1. 尝试读取缓存
+        // 1. 读取本地缓存
         const cachedDataStr = localStorage.getItem(CACHE_KEY);
         if (cachedDataStr) {
             try {
                 const data = JSON.parse(cachedDataStr);
-                // 简单的过期检查（可选）：如果日期不匹配今天，可视为失效，这里暂时直接渲染
-                renderData(data);
+                renderData(data, {fromCache:true});
                 hasRenderedCache = true;
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';
-            } catch (e) { console.error("Cache error", e); }
+            } catch (e) { console.error('Cache parse error', e); }
         }
 
-        // 2. 网络请求
+        // 2. 网络请求（允许失败降级到缓存）
         try {
-            const response = await fetch(`${API_ENDPOINT}?t=${Date.now()}`);
+            const response = await fetch(`${API_ENDPOINT}?t=${Date.now()}`, {cache:'no-store'});
             const result = await response.json();
-            
-            // 兼容不同的 API 返回结构 (result.code or result.success)
-            if (result.code === 200 || result.success === true || result.data) {
-                const realData = result.data || result; // 容错处理
-                renderData(realData);
+
+            // 兼容 result.data / result.success / 直接数组
+            const ok = (result && (result.code === 200 || result.success === true || result.data || Array.isArray(result)));
+            if (ok) {
+                const realData = result.data || result;
+                renderData(realData, {fromCache:false});
                 localStorage.setItem(CACHE_KEY, JSON.stringify(realData));
-                
-                // 确保移除 loading
                 loadingEl.style.display = 'none';
                 contentEl.style.display = 'block';
+            } else {
+                throw new Error('Unexpected API structure');
             }
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
             if (!hasRenderedCache) {
-                document.querySelector('#loading div:last-child').textContent = "CONNECTION FAILED";
+                document.querySelector('#loading div:nth-child(2)').textContent = "CONNECTION FAILED";
                 document.querySelector('.loading-halo').style.borderColor = "#ccc";
+            } else {
+                // 已有缓存，显示提示但不覆盖
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
             }
         }
     }
 
-    function renderData(data) {
+    function safeText(t){ return String(t || '').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function renderData(data, opts={}) {
         // 日期
-        document.getElementById('date-display').textContent = data.date || new Date().toLocaleDateString();
-        
+        const dEl = document.getElementById('date-display');
+        if (data.date) {
+            // 尝试解析 ISO 或 'YYYY-MM-DD'，否则显示原样
+            const parsed = new Date(data.date);
+            if (!isNaN(parsed)) dEl.textContent = formatChineseDate(parsed);
+            else dEl.textContent = data.date;
+        } else {
+            dEl.textContent = formatChineseDate(new Date());
+        }
+
         // 语录
-        document.getElementById('weiyu-text').textContent = data.weiyu || "Sensei, work hard today!";
+        const weiyuEl = document.getElementById('weiyu-text');
+        weiyuEl.textContent = data.weiyu || "Sensei, work hard today! 每一条都是小小的能量~";
 
         // 音频
         const audioBox = document.getElementById('audio-box');
@@ -435,35 +500,152 @@
             audioBox.style.display = 'none';
         }
 
-        // 新闻列表
+        // 新闻列表填充
         const newsList = document.getElementById('news-list');
         newsList.innerHTML = '';
 
-        if (data.news && Array.isArray(data.news)) {
-            data.news.forEach((itemStr, index) => {
-                const li = document.createElement('li');
-                li.className = 'news-item fade-in-up';
-                // 动画延迟，形成流水效果
-                li.style.animationDelay = `${0.3 + (index * 0.05)}s`;
+        // 支持多种结构：data.news array，或 data itself 为数组，或 data.list
+        let arr = [];
+        if (Array.isArray(data.news)) arr = data.news;
+        else if (Array.isArray(data.list)) arr = data.list;
+        else if (Array.isArray(data)) arr = data;
+        else if (Array.isArray(data.items)) arr = data.items;
 
-                // 尝试提取序号 (兼容 "1. xxx", "1、xxx" 或无序号)
-                let num = index + 1;
-                let content = itemStr;
-                
-                // 简单的正则匹配开头的数字
-                const match = itemStr.match(/^(\d+)[、.](.*)/);
-                if (match) {
-                    num = match[1];
-                    content = match[2].trim();
+        // 如果拿到对象数组（title/link/summary/tag），也要兼容
+        arr.forEach((item, idx) => {
+            let raw = item;
+            // 支持直接字符串或对象
+            let num = idx + 1;
+            let content = '';
+            let summary = '';
+            let tag = '';
+            let href = null;
+
+            if (typeof item === 'string') {
+                content = item;
+            } else if (typeof item === 'object' && item !== null) {
+                content = item.title || item.text || item.content || JSON.stringify(item).slice(0,60);
+                summary = item.summary || item.desc || item.excerpt || '';
+                tag = item.tag || item.category || '';
+                href = item.url || item.link || null;
+            }
+
+            // 尝试提取编号前缀
+            const match = String(content).trim().match(/^(\d+)[、.]\s*(.*)$/);
+            if (match) {
+                num = match[1];
+                content = match[2];
+            }
+
+            const li = document.createElement('li');
+            li.className = 'news-item';
+            li.tabIndex = 0;
+            li.setAttribute('role','listitem');
+            li.setAttribute('aria-expanded','false');
+            li.dataset.index = num;
+
+            // 点击/回车展开全文（或跳转）
+            li.addEventListener('click', (e) => {
+                // 如果配置了链接并且用户按住 Ctrl/Cmd 或点击右侧链接，则打开链接
+                if (href && (e.ctrlKey || e.metaKey)) {
+                    window.open(href, '_blank');
+                    return;
                 }
-
-                li.innerHTML = `
-                    <div class="news-index"><span>${num}</span></div>
-                    <div class="news-content">${content}</div>
-                `;
-                newsList.appendChild(li);
+                toggleExpand(li);
             });
+            li.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault(); toggleExpand(li);
+                } else if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+                    // Ctrl/C to copy content 文本复制快捷键
+                    navigator.clipboard?.writeText(content).then(()=> {
+                        showToast('已复制新闻内容到剪贴板');
+                    }).catch(()=>{/* ignore */});
+                }
+            });
+
+            // 构建内部 HTML（尽量防注入）
+            const indexHtml = `<div class="news-index"><span>${safeText(num)}</span></div>`;
+            const badgeHtml = tag ? `<div class="badge" aria-hidden="true">${safeText(tag)}</div>` : '';
+            const excerptHtml = `<div class="news-excerpt">${safeText(summary || content)}</div>`;
+
+            const metaHtml = `<div class="news-meta">
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    ${badgeHtml}
+                                </div>
+                                <div style="margin-left:auto;color:var(--ba-text-light);font-weight:700;font-size:12px;">
+                                    ${href ? `<a href="${safeAttr(href)}" target="_blank" rel="noopener" style="color:var(--ba-pink-dark);text-decoration:none;">打开 ↗</a>` : `<span class="more-tag">展开</span>`}
+                                </div>
+                              </div>`;
+
+            li.innerHTML = `
+                ${indexHtml}
+                <div class="news-content">
+                    <div style="font-weight:800; font-size:14px; color:var(--ba-text);">${safeText(content)}</div>
+                    ${excerptHtml}
+                    ${metaHtml}
+                </div>
+            `;
+
+            newsList.appendChild(li);
+        });
+
+        // 小提示 - 如果没有数据
+        if (!arr || arr.length === 0) {
+            newsList.innerHTML = `<li style="padding:18px;color:var(--ba-text-light);">今天好像很安静，暂无新闻（或者 data.news 为空）</li>`;
         }
+    }
+
+    function toggleExpand(li) {
+        const expanded = li.getAttribute('aria-expanded') === 'true';
+        if (expanded) {
+            li.setAttribute('aria-expanded','false');
+            li.querySelector('.more-tag')?.replaceWith(createMoreTag());
+        } else {
+            li.setAttribute('aria-expanded','true');
+            li.querySelector('.more-tag')?.textContent = '收起';
+        }
+    }
+
+    function createMoreTag() {
+        const s = document.createElement('span');
+        s.className = 'more-tag';
+        s.textContent = '展开';
+        return s;
+    }
+
+    function safeAttr(u) {
+        try {
+            const url = new URL(u, location.href);
+            return url.href;
+        } catch (e) {
+            return '#';
+        }
+    }
+
+    // 简易 toast（非阻塞）
+    let toastTimeout = null;
+    function showToast(text) {
+        let el = document.getElementById('zaobao-toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'zaobao-toast';
+            el.style.position = 'fixed';
+            el.style.right = '18px';
+            el.style.bottom = '18px';
+            el.style.background = 'linear-gradient(90deg, rgba(255,170,178,0.12), rgba(106,217,245,0.06))';
+            el.style.padding = '10px 14px';
+            el.style.borderRadius = '10px';
+            el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.06)';
+            el.style.color = 'var(--ba-pink-dark)';
+            el.style.fontWeight = '700';
+            el.style.zIndex = 9999;
+            document.body.appendChild(el);
+        }
+        el.textContent = text;
+        el.style.opacity = '1';
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(()=>{ if(el) el.style.opacity='0'; }, 2400);
     }
 </script>
 </body>
