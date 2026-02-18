@@ -1735,34 +1735,72 @@ const Paginator = (() => {
     }, 200);
   }
 
-  function init(data) {
-    _data = data;
-    _page = 0;
-    _busy = false;
-    const pages = totalPages();
+  const MOBILE_BP = 600;
+  function isMobile() {
+    return window.innerWidth < MOBILE_BP ||
+      /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  }
 
-    // Show / hide pagination if only 1 page
-    document.getElementById('pagination').style.display = pages <= 1 ? 'none' : 'flex';
+  function buildAllItems() {
+    const list = document.getElementById('news-list');
+    list.innerHTML = '';
+    _data.forEach((item, i) => {
+      const li = document.createElement('li');
+      li.className = 'news-item';
+      li.setAttribute('role', 'button');
+      li.innerHTML = `
+        <div class="news-index">${String(i + 1).padStart(2,'0')}</div>
+        <div class="news-content">${item.text}</div>
+        <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
+      `;
+      applyTouchFeedback(li);
+      li.addEventListener('click', () => {
+        if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
+        li.classList.add('processing-scan');
+        setTimeout(() => li.classList.remove('processing-scan'), 1500);
+      });
+      list.appendChild(li);
+    });
+  }
 
-    buildItems(0);
-    updateControls();
-
-    // Bind buttons
+  function bindPageBtns() {
     const prevBtn = document.getElementById('page-prev');
     const nextBtn = document.getElementById('page-next');
-
-    // Remove old listeners by cloning
     const newPrev = prevBtn.cloneNode(true);
     const newNext = nextBtn.cloneNode(true);
     prevBtn.replaceWith(newPrev);
     nextBtn.replaceWith(newNext);
-
     applyTouchFeedback(newPrev);
     applyTouchFeedback(newNext);
-
     newPrev.addEventListener('click', () => goTo(_page - 1, -1));
     newNext.addEventListener('click', () => goTo(_page + 1, +1));
   }
+
+  function init(data) {
+    _data = data;
+    _page = 0;
+    _busy = false;
+
+    if (isMobile()) {
+      // Mobile: paginated, 5 per page
+      const pages = totalPages();
+      document.getElementById('pagination').style.display = pages <= 1 ? 'none' : 'flex';
+      buildItems(0);
+      updateControls();
+      bindPageBtns();
+    } else {
+      // Desktop: show all at once, no pagination
+      document.getElementById('pagination').style.display = 'none';
+      buildAllItems();
+    }
+  }
+
+  // Re-evaluate layout on resize (e.g. browser window resize / devtools)
+  let _resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => { if (_data.length) init(_data); }, 250);
+  });
 
   return { init };
 })();
