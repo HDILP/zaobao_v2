@@ -3,397 +3,956 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schale Intelligence | Deep Dive Protocol</title>
+    <title>早报 | Schale Intelligence</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* 基础色板 */
+            /* 核心配色 */
             --ba-pink: #ffaab2;
             --ba-pink-dark: #ff8e99;
+            --ba-pink-light: #ffeef0;
             --ba-blue-accent: #6AD9F5;
+            --ba-blue-deep: #4B9CD3;
             --ba-text: #4c5b70;
-            --glass-bg: rgba(255, 255, 255, 0.82);
-            --glass-border: rgba(255, 255, 255, 0.9);
-            
-            /* 氛围光效 */
-            --inner-glow: inset 0 0 20px rgba(106, 217, 245, 0.15);
-            --scratch-filter: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+            --ba-text-light: #8a9bb3;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+
+            /* 情报终端特有配色 */
+            --term-green: rgba(106, 245, 173, 0.15);
+            --term-glitch: #ff00ea;
+            --ba-shadow-deep: 0 16px 48px rgba(255, 130, 148, 0.22), 0 4px 12px rgba(106, 217, 245, 0.12);
+            --ba-noise-opacity: 0.045;
         }
 
         * { box-sizing: border-box; user-select: none; }
 
         body {
-            margin: 0; padding: 20px;
+            margin: 0;
+            padding: 20px;
             font-family: "M PLUS Rounded 1c", sans-serif;
             color: var(--ba-text);
-            background: #fdfdfd;
+            background: #fdfdfd; /* Fallback */
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            perspective: 1200px; /* 开启3D透视 */
+            overflow-x: hidden;
         }
 
-        /* ─── 0. 极简故障 (Step Glitch) ─── */
-        /* 克制：极短时间内的位移跳变，不使用模糊或色差，追求纯粹的"信号丢失"感 */
-        @keyframes glitch-snap {
-            0% { transform: translate(0); }
-            20% { transform: translate(-3px, 0); }
-            40% { transform: translate(3px, 0); }
-            60% { transform: translate(-3px, 0); }
-            100% { transform: translate(0); }
+        /* ─── 故障滤镜 (Global Glitch) ─── */
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+            80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+            100% { clip-path: inset(30% 0 20% 0); transform: translate(0); }
         }
 
-        .glitch-snap-active {
-            /* steps(2, end) 造成机械的卡顿感 */
-            animation: glitch-snap 0.05s steps(2, end) 1;
-            filter: brightness(1.3) contrast(1.2);
+        .glitch-active {
+            animation: glitch-anim-1 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+            filter: hue-rotate(90deg) contrast(1.2);
         }
 
-        /* ─── 1. 容器深度 (Depth Container) ─── */
-        .container {
-            width: 100%; max-width: 600px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(24px) saturate(120%);
-            -webkit-backdrop-filter: blur(24px) saturate(120%);
-            border-radius: 18px;
-            border: 1px solid var(--glass-border);
-            /* 物理光泽 */
-            box-shadow: 
-                0 20px 50px rgba(0,0,0,0.05),
-                0 1px 0 rgba(255,255,255,0.8) inset,
-                var(--inner-glow); 
-            position: relative;
-            transform-style: preserve-3d; /* 保持3D空间 */
-            transition: transform 0.1s cubic-bezier(0.2, 0, 0.2, 1); /* 极其顺滑的跟随 */
-            will-change: transform;
-        }
-
-        /* 划痕层 - 模拟旧玻璃面板 */
-        .container::after {
-            content: ''; position: absolute; inset: 0;
-            background-image: var(--scratch-filter);
-            opacity: 0.4;
+        .glitch-active::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(106, 217, 245, 0.2);
+            mix-blend-mode: hard-light;
             pointer-events: none;
-            z-index: 2;
+            z-index: 99;
+        }
+
+        /* ─── 侧边栏垂直文字条 ─── */
+        .side-strip {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            writing-mode: vertical-lr;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--ba-blue-accent);
+            opacity: 0.22;
+            pointer-events: none;
+            z-index: 0;
+            text-transform: uppercase;
+            font-family: "JetBrains Mono", monospace;
+        }
+        .side-strip-left { left: 8px; text-orientation: mixed; }
+        .side-strip-right { right: 8px; text-orientation: mixed; transform: translateY(-50%) rotate(180deg); }
+
+        /* ─── 主容器 ─── */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(120%);
+            -webkit-backdrop-filter: blur(20px) saturate(120%);
             border-radius: 18px;
+            border: 2px solid rgba(255,255,255,0.95);
+            outline: 1px solid rgba(255, 170, 178, 0.4);
+            outline-offset: 3px;
+            box-shadow: var(--ba-shadow-deep);
+            position: relative;
+            overflow: visible; /* 改为 visible 以允许装饰溢出 */
+            transition: filter 0.1s;
+        }
+
+        /* 战术氛围滤镜 overlay */
+        .intel-overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(106, 217, 245, 0.08) 100%);
+            pointer-events: none;
+            z-index: 1;
+            mix-blend-mode: multiply;
+        }
+
+        /* 噪点纹理 */
+        .container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+            background-size: 120px 120px;
+            opacity: var(--ba-noise-opacity);
+            pointer-events: none;
+            z-index: 0;
             mix-blend-mode: overlay;
         }
 
-        /* ─── 2. 内部 UI 结构 ─── */
+        /* 扫描线 */
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 3px,
+                rgba(70, 90, 110, 0.03) 3px,
+                rgba(70, 90, 110, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 1;
+            border-radius: 16px;
+            animation: scanMove 10s linear infinite;
+        }
+        @keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 100%; } }
+
+        /* ─── 头部区域 ─── */
         .header {
-            padding: 24px 24px 10px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .title h1 {
-            margin: 0; font-size: 24px; font-weight: 800;
-            font-style: italic; letter-spacing: 1px;
-        }
-        .title span {
-            display: block; font-size: 10px; color: var(--ba-pink);
-            font-family: "JetBrains Mono", monospace; letter-spacing: 2px;
+            padding: 24px 24px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 5;
         }
 
-        /* 语录显示器 */
-        .decoder-box {
-            margin: 10px 24px;
-            padding: 16px;
-            background: rgba(255,255,255,0.5);
-            border-left: 3px solid var(--ba-pink);
-            border-radius: 0 8px 8px 0;
+        .title-group h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--ba-text);
+            font-style: italic;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.9);
+            letter-spacing: 1px;
+        }
+        .title-group .sub-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ba-pink);
+            letter-spacing: 2.5px;
+            margin-top: 5px;
+            text-transform: uppercase;
+            font-family: "JetBrains Mono", monospace;
+        }
+
+        /* 日期胶囊 */
+        .date-capsule {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,238,240,0.9) 100%);
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ba-pink-dark);
+            border: 1.5px solid rgba(255,170,178,0.5);
+            box-shadow: 0 4px 12px rgba(255,142,153,0.15);
+            font-family: "JetBrains Mono", monospace;
+        }
+
+        /* ─── 语录框 (Intel Decoder) ─── */
+        .weiyu-wrapper {
+            padding: 5px 24px;
+            position: relative;
+            z-index: 5;
+        }
+        .weiyu-card {
+            background: rgba(255,255,255,0.8);
+            border-left: 4px solid var(--ba-pink);
+            border-radius: 4px 12px 12px 4px;
+            padding: 14px 16px;
+            position: relative;
+            box-shadow: 0 2px 12px rgba(255,170,178,0.08);
+            min-height: 60px;
+        }
+        .weiyu-label {
+            position: absolute;
+            top: -9px; left: 10px;
+            background: var(--ba-pink);
+            color: white;
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: "JetBrains Mono", monospace;
+        }
+        #weiyu-text {
+            margin: 0;
             font-size: 14px;
             line-height: 1.6;
-            min-height: 54px;
-            font-family: "JetBrains Mono", "M PLUS Rounded 1c", monospace;
-            position: relative;
+            color: var(--ba-text);
+            font-weight: 500;
         }
-        /* 光标 */
-        .cursor {
-            display: inline-block; width: 8px; height: 14px;
-            background: var(--ba-blue-accent);
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-            margin-left: 4px;
+        .decrypt-char {
+            color: var(--ba-blue-accent);
+            font-family: "JetBrains Mono", monospace;
+            font-weight: bold;
         }
-        @keyframes blink { 50% { opacity: 0; } }
 
-        /* 频谱与播放器 */
-        .audio-section {
-            padding: 20px 24px;
-            display: flex; align-items: center; gap: 15px;
-        }
-        
-        /* 核心呼吸灯 */
-        .core-halo {
-            width: 40px; height: 40px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #fff 30%, var(--ba-blue-accent) 100%);
-            box-shadow: 0 0 20px var(--ba-blue-accent);
+        /* ─── 战术音频播放器 (Voice Intelligence) ─── */
+        .audio-wrapper {
+            padding: 10px 24px;
             position: relative;
-            opacity: 0.8;
+            z-index: 5;
+            display: none; /* JS控制显示 */
+        }
+        .custom-player {
+            background: linear-gradient(135deg, #1e2532 0%, #151a24 100%);
+            border-radius: 16px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border: 1px solid rgba(106,217,245,0.3);
+            box-shadow: 0 8px 24px rgba(15, 25, 40, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 播放器内部网格背景 */
+        .custom-player::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(106, 217, 245, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(106, 217, 245, 0.05) 1px, transparent 1px);
+            background-size: 10px 10px;
+            pointer-events: none;
+        }
+
+        /* Arona-style 呼吸球 (声纹核心) */
+        .voice-core {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff 0%, var(--ba-blue-accent) 40%, transparent 80%);
+            position: relative;
+            flex-shrink: 0;
+            box-shadow: 0 0 15px var(--ba-blue-accent);
+            transform: scale(0.8);
+            transition: transform 0.1s linear, opacity 0.2s;
+            opacity: 0.6;
+        }
+        .voice-core::after {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; right: -2px; bottom: -2px;
+            border-radius: 50%;
+            border: 1px dashed rgba(255,255,255,0.6);
+            animation: spin 8s linear infinite;
+        }
+
+        /* 播放控制按钮 */
+        .player-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 2;
+        }
+        .player-btn {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            color: var(--ba-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        .player-btn:hover { transform: scale(1.1); background: var(--ba-blue-accent); color: white; }
+        .player-btn:active { transform: scale(0.95); }
+
+        /* 真实频谱 */
+        .spectrum-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 24px;
+            flex: 0 0 auto;
+            z-index: 2;
+            padding-bottom: 2px;
+        }
+        .spectrum-bar {
+            width: 4px;
+            background: var(--ba-blue-accent);
+            border-radius: 2px;
+            height: 3px; /* 初始高度 */
+            transition: height 0.05s linear;
+            box-shadow: 0 0 5px rgba(106, 217, 245, 0.5);
+        }
+
+        /* 进度信息 */
+        .player-info {
+            flex: 1;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .player-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .player-label {
+            font-size: 9px;
+            color: var(--ba-blue-accent);
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        /* REC 录制灯 */
+        .rec-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            color: #ff5e5e;
+            font-weight: 800;
+            opacity: 0.5;
             transition: opacity 0.3s;
         }
-        .core-halo::before {
-            content: ''; position: absolute; inset: -4px;
-            border: 1px dashed rgba(106, 217, 245, 0.6);
+        .rec-dot {
+            width: 6px; height: 6px;
+            background: #ff5e5e;
             border-radius: 50%;
-            animation: rotate-slow 10s linear infinite;
         }
-        @keyframes rotate-slow { to { transform: rotate(360deg); } }
+        .rec-active { opacity: 1; }
+        .rec-active .rec-dot { animation: blink 1s steps(2, start) infinite; }
 
-        /* 频谱条容器 */
-        .spectrum-viz {
-            display: flex; align-items: flex-end; gap: 4px;
-            height: 30px; flex-grow: 1;
+        @keyframes blink { to { visibility: hidden; } }
+
+        .progress-track {
+            height: 3px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
         }
-        .bar {
-            width: 4px; background: var(--ba-blue-accent);
-            border-radius: 2px; height: 4px;
-            transition: height 0.08s ease-out; /* 增加一点阻尼 */
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--ba-blue-accent), #fff);
+            box-shadow: 0 0 8px var(--ba-blue-accent);
         }
 
-        /* 交互按钮 */
-        .play-trigger {
-            background: none; border: 1px solid var(--ba-text);
-            border-radius: 20px; padding: 6px 16px;
-            font-family: "JetBrains Mono", monospace;
-            font-size: 11px; font-weight: 700;
-            cursor: pointer; transition: all 0.2s;
+        /* ─── 新闻列表 (Processing Unit) ─── */
+        .news-section {
+            padding: 10px 24px 30px;
+            position: relative;
+            z-index: 5;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(76, 91, 112, 0.1);
+            padding-bottom: 8px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 800;
             color: var(--ba-text);
-        }
-        .play-trigger:hover {
-            background: var(--ba-text); color: #fff;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            letter-spacing: 1px;
+            margin-right: auto;
         }
 
-        /* 装饰性侧栏文字 */
-        .decor-text {
-            position: fixed; right: 20px; bottom: 20px;
-            writing-mode: vertical-rl;
-            font-family: "JetBrains Mono";
-            font-size: 10px; opacity: 0.3;
-            letter-spacing: 4px;
+        /* 信号强度模拟 */
+        .signal-meter {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 12px;
+        }
+        .signal-bar {
+            width: 3px;
+            background: var(--ba-text-light);
+            opacity: 0.3;
+            border-radius: 1px;
+        }
+        .signal-bar.active { background: var(--ba-blue-accent); opacity: 1; }
+
+        .news-list { list-style: none; padding: 0; margin: 0; }
+        .news-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
         }
 
+        .news-item:hover {
+            background: rgba(255,255,255,0.9);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        /* 正在处理/播报中的新闻高亮 */
+        .news-item.processing {
+            background: linear-gradient(90deg, rgba(106, 217, 245, 0.1) 0%, rgba(255,255,255,0.8) 40%);
+            border-color: rgba(106, 217, 245, 0.5);
+            box-shadow: 0 0 15px rgba(106, 217, 245, 0.15);
+        }
+        .news-item.processing::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 10%; bottom: 10%;
+            width: 3px;
+            background: var(--ba-blue-accent);
+            border-radius: 0 2px 2px 0;
+            animation: blink 1s infinite;
+        }
+
+        .news-index {
+            flex-shrink: 0;
+            font-family: "JetBrains Mono", monospace;
+            font-weight: 800;
+            font-size: 14px;
+            color: var(--ba-pink-dark);
+            width: 28px;
+            opacity: 0.8;
+        }
+        .news-content {
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: var(--ba-text);
+            font-weight: 500;
+        }
+
+        /* Loading */
+        #loading-screen {
+            padding: 60px 0;
+            text-align: center;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid var(--ba-pink-light);
+            border-top-color: var(--ba-pink);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            animation: spin 1s infinite linear;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* 底部 */
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            color: var(--ba-text-light);
+            opacity: 0.6;
+            padding-bottom: 12px;
+            font-family: "JetBrains Mono", monospace;
+            margin-top: 20px;
+        }
+
+        /* 隐藏原生Audio */
+        audio { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="decor-text">SCHALE_DB // VER.3.5.0</div>
+    <div class="side-strip side-strip-left">SYSTEM ID: ARONA // SYNC RATE: 100%</div>
+    <div class="side-strip side-strip-right">SCHALE OFFICE // ENCRYPTED CONNECTION</div>
 
-    <div class="container" id="panel">
+    <div class="container" id="terminal-container">
+        <div class="intel-overlay"></div>
+        <div class="scanlines"></div>
+
         <div class="header">
-            <div class="title">
-                <h1>SCHALE</h1>
-                <span>INTELLIGENCE TERMINAL</span>
+            <div class="title-group">
+                <h1>DAILY NEWS</h1>
+                <div class="sub-title">Intelligence Report // <span id="clock-time">00:00</span></div>
             </div>
-            <div style="font-family:'JetBrains Mono'; font-size:12px; opacity:0.6;" id="clock">00:00:00</div>
+            <div class="date-capsule" id="date-display">LOADING...</div>
         </div>
 
-        <div class="decoder-box">
-            <span id="output-text"></span><span class="cursor"></span>
+        <div id="loading-screen">
+            <div class="spinner"></div>
+            <div style="font-size:12px; letter-spacing:1px; color:var(--ba-pink);">DECRYPTING DATA...</div>
         </div>
 
-        <div class="audio-section">
-            <div class="core-halo" id="core"></div>
-            <div class="spectrum-viz" id="spectrum">
-                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-                <div class="bar"></div><div class="bar"></div>
+        <div id="main-content" style="display: none;">
+
+            <div class="weiyu-wrapper">
+                <div class="weiyu-card">
+                    <div class="weiyu-label">MOMOTALK</div>
+                    <p id="weiyu-text"></p>
+                </div>
             </div>
-            <button class="play-trigger" id="play-btn">CONNECT</button>
+
+            <div class="audio-wrapper" id="audio-wrapper">
+                <div class="custom-player">
+                    <div class="voice-core" id="voice-core"></div>
+
+                    <button class="player-btn" id="play-btn">
+                        <svg id="icon-play" width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><path d="M0 0L12 7L0 14Z"/></svg>
+                        <svg id="icon-pause" width="12" height="14" viewBox="0 0 12 14" fill="currentColor" style="display:none"><path d="M0 0H4V14H0ZM8 0H12V14H8Z"/></svg>
+                    </button>
+
+                    <div class="player-info">
+                        <div class="player-status-row">
+                            <span class="player-label">VOICE_DATA.mp3</span>
+                            <div class="rec-indicator" id="rec-light">
+                                <div class="rec-dot"></div> REC
+                            </div>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="spectrum-container" id="spectrum-box">
+                        <div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div>
+                    </div>
+                </div>
+                <audio id="audio-source" crossorigin="anonymous"></audio>
+            </div>
+
+            <div class="news-section">
+                <div class="section-header">
+                    <span class="section-title">INTELLIGENCE FEED</span>
+                    <div class="signal-meter" id="signal-meter">
+                        <div class="signal-bar active" style="height: 4px"></div>
+                        <div class="signal-bar active" style="height: 6px"></div>
+                        <div class="signal-bar active" style="height: 8px"></div>
+                        <div class="signal-bar" style="height: 10px"></div>
+                    </div>
+                </div>
+                <ul class="news-list" id="news-list"></ul>
+            </div>
+
+            <div class="footer">
+                TERMINAL VER 3.0.1 // AUTHORIZED BY SENSEI
+            </div>
         </div>
     </div>
 
-    <audio id="audio-source" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.m4a" crossorigin="anonymous"></audio>
-    <script>
+<script>
     /**
-     * SCHALE INTELLIGENCE TERMINAL - LOGIC CORE
-     * Focus: Restraint, Rhythm, Atmosphere
+     * 🚨 CHIEF INTELLIGENCE OFFICER (CIO) NOTE:
+     * Web Audio API 必须由用户手势（点击播放）激活。
+     * 频谱动画使用 requestAnimationFrame 实现高性能渲染。
      */
 
-    // ─── 1. 深度交互逻辑 (Tilt Effect) ───
-    const panel = document.getElementById('panel');
-    const updateTilt = (e) => {
-        // 计算鼠标相对于窗口中心的坐标 (-1 到 1)
-        const x = (e.clientX / window.innerWidth) * 2 - 1;
-        const y = (e.clientY / window.innerHeight) * 2 - 1;
-
-        // 极轻微的倾斜 (Max 1.5deg) 保持高级感
-        // X轴旋转由Y坐标控制，Y轴旋转由X坐标控制（反向）
-        panel.style.transform = `perspective(1000px) rotateX(${-y * 1.5}deg) rotateY(${x * 1.5}deg)`;
+    const CONFIG = {
+        api: './data.json',
+        cacheKey: 'schale_intel_cache',
+        glitchDuration: 300 // ms
     };
-    
-    // 节流处理，避免过高频触发导致掉帧
-    let tiltFrame;
-    document.addEventListener('mousemove', (e) => {
-        if (tiltFrame) cancelAnimationFrame(tiltFrame);
-        tiltFrame = requestAnimationFrame(() => updateTilt(e));
-    });
 
+    // ─── 1. 核心状态机 ───
+    const State = {
+        audioCtx: null,        // null=未初始化, false=初始化失败(静默模式), AudioContext=正常
+        analyser: null,
+        dataArray: null,
+        source: null,
+        isPlaying: false,
+        newsData: [],
+        rafId: null,           // [HOTFIX] RAF 循环 ID，防止多重循环
+        typeWriterGen: 0       // [HOTFIX] typeWriter 世代计数，防止并发叠加
+    };
 
-    // ─── 2. 簇状停顿打字机 (Burst Typing) ───
-    const outputEl = document.getElementById('output-text');
-    const targetText = "Connecting to Shittim Chest... Access Granted. Welcome back, Sensei. Today's agenda has been updated.";
-    
-    // 模拟人类思考节奏的打字函数
-    const typeWriter = async (text) => {
-        outputEl.innerText = "";
-        let i = 0;
-        
-        while (i < text.length) {
-            // 决定这一簇打多少个字 (3-7个)
-            const burstLen = Math.floor(Math.random() * 5) + 3; 
-            const currentBurst = text.slice(i, i + burstLen);
-            
-            // 快速输出这一簇
-            for (let char of currentBurst) {
-                outputEl.innerText += char;
-                // 字与字之间极短的物理延迟 (20-50ms)
-                await new Promise(r => setTimeout(r, 20 + Math.random() * 30));
-            }
-            
-            i += burstLen;
+    // ─── 2. Web Audio 初始化 (Lazily Loaded) ───
+    function initAudioSystem() {
+        // [HOTFIX] State.audioCtx !== null 意味着已尝试过初始化（无论成功失败），直接返回
+        if (State.audioCtx !== null) return;
 
-            // 簇与簇之间的“思考”停顿 (长短不一, 100ms - 500ms)
-            // 偶尔出现较长的停顿模拟“加载”或“斟酌”
-            const isLongPause = Math.random() > 0.8;
-            const pauseTime = isLongPause ? 600 : 100 + Math.random() * 200;
-            
-            if (i < text.length) await new Promise(r => setTimeout(r, pauseTime));
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+        // [HOTFIX] 浏览器不支持 Web Audio API → 标记为 false，进入静默模式
+        if (!AudioContextClass) {
+            console.warn('[HOTFIX] Web Audio API not supported. Entering silent mode.');
+            State.audioCtx = false;
+            return;
         }
-    };
 
+        try {
+            State.audioCtx = new AudioContextClass();
+            State.analyser = State.audioCtx.createAnalyser();
+            State.analyser.fftSize = 64; // 较小的FFT尺寸，获得块状波形
 
-    // ─── 3. 视觉循环与音频 (Visual Loop & Heartbeat) ───
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const audioElement = document.getElementById('audio-source');
-    const playBtn = document.getElementById('play-btn');
-    let source, analyser, dataArray;
-    let isPlaying = false;
-    let isInit = false;
+            const audioEl = document.getElementById('audio-source');
+            // [HOTFIX] createMediaElementSource 只调用一次，State.audioCtx guard 已保证
+            State.source = State.audioCtx.createMediaElementSource(audioEl);
 
-    function initAudio() {
-        if (isInit) return;
-        source = audioCtx.createMediaElementSource(audioElement);
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 64;
-        source.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        isInit = true;
-    }
+            State.source.connect(State.analyser);
+            State.analyser.connect(State.audioCtx.destination);
 
-    const bars = document.querySelectorAll('.bar');
-    const core = document.getElementById('core');
+            const bufferLength = State.analyser.frequencyBinCount;
+            State.dataArray = new Uint8Array(bufferLength);
 
-    // 核心渲染循环 (持续运行)
-    function renderLoop() {
-        requestAnimationFrame(renderLoop);
-        
-        const now = Date.now(); // 用于生成静默波形的时间因子
+            // [HOTFIX] 移除此处的 renderFrame() 调用。
+            // 原代码在此处与 togglePlay 各调用一次，导致双重 RAF 循环。
+            // renderFrame 统一由 startRenderLoop() 在 togglePlay 中触发。
 
-        if (isPlaying) {
-            // ── 模式 A: 活跃态 (音频驱动) ──
-            analyser.getByteFrequencyData(dataArray);
-            
-            // 计算平均音量用于核心光环
-            let sum = 0;
-            bars.forEach((bar, idx) => {
-                // 取样: 略过极低频，每隔几个取样
-                const val = dataArray[idx * 2 + 2] || 0; 
-                sum += val;
-                
-                // 映射高度 (4px - 24px)
-                const h = 4 + (val / 255) * 20;
-                bar.style.height = `${h}px`;
-                bar.style.opacity = 1;
-            });
-            
-            // 核心动态缩放
-            const avg = sum / bars.length;
-            core.style.transform = `scale(${0.9 + (avg/255)*0.3})`;
-            core.style.boxShadow = `0 0 ${20 + avg/5}px var(--ba-blue-accent)`;
-
-        } else {
-            // ── 模式 B: 待命态 (静默脉动/Math.sin) ──
-            // 核心: 缓慢的深呼吸
-            const breath = Math.sin(now * 0.0015); // 极慢
-            const scale = 0.95 + breath * 0.05; // 0.9 - 1.0
-            core.style.transform = `scale(${scale})`;
-            core.style.boxShadow = `0 0 ${15 + breath * 5}px rgba(106, 217, 245, 0.4)`;
-
-            // 频谱: 像海浪一样起伏的微小波动
-            bars.forEach((bar, idx) => {
-                // 每个bar有相位差，形成波浪感
-                const wave = Math.sin(now * 0.003 + idx * 0.5);
-                const h = 5 + wave * 2; // 3px - 7px
-                bar.style.height = `${h}px`;
-                bar.style.opacity = 0.5; // 变暗
-            });
+        } catch (e) {
+            console.warn('[HOTFIX] Web Audio init failed, entering silent mode.', e);
+            State.audioCtx = false; // 标记初始化失败，防止重试
         }
     }
 
+    // ─── 3. 视觉渲染循环 (60FPS) ───
 
-    // ─── 4. 克制的 Glitch 触发器 ───
-    function scheduleRandomGlitch() {
-        // 随机间隔 15s - 30s
-        const nextTime = 15000 + Math.random() * 15000;
-        
+    // [HOTFIX] 统一入口，防止多次 play 叠加多条 RAF 链
+    function startRenderLoop() {
+        if (State.rafId !== null) return; // 已有循环在运行，跳过
+        State.rafId = requestAnimationFrame(renderFrame);
+    }
+
+    function renderFrame() {
+        if (!State.isPlaying) {
+            // 停止时复位
+            State.rafId = null; // [HOTFIX] 清除 ID，标记循环已结束
+            resetVisuals();
+            return;
+        }
+
+        // [HOTFIX] analyser 未初始化（静默模式）时，不报错，仅继续循环
+        if (!State.analyser || !State.dataArray) {
+            State.rafId = requestAnimationFrame(renderFrame);
+            return;
+        }
+
+        State.rafId = requestAnimationFrame(renderFrame);
+
+        // 获取频域数据 (0-255)
+        State.analyser.getByteFrequencyData(State.dataArray);
+
+        // A. 驱动频谱条 (取前5个有代表性的频段)
+        const bars = document.querySelectorAll('.spectrum-bar');
+        // 取样索引: low, low-mid, mid, mid-high, high
+        const indices = [2, 6, 10, 16, 22];
+
+        let totalVol = 0;
+
+        bars.forEach((bar, i) => {
+            const val = State.dataArray[indices[i]] || 0;
+            totalVol += val;
+            // 映射 0-255 到 3px-20px
+            const h = 3 + (val / 255) * 18;
+            bar.style.height = `${h}px`;
+        });
+
+        // B. 驱动 Arona 粒子球 (呼吸效果)
+        const avgVol = totalVol / bars.length;
+        const voiceCore = document.getElementById('voice-core');
+        // 缩放范围 0.8 - 1.2，透明度 0.6 - 1.0
+        const scale = 0.8 + (avgVol / 255) * 0.4;
+        const opacity = 0.6 + (avgVol / 255) * 0.4;
+
+        voiceCore.style.transform = `scale(${scale})`;
+        voiceCore.style.opacity = opacity;
+    }
+
+    function resetVisuals() {
+        document.querySelectorAll('.spectrum-bar').forEach(b => b.style.height = '3px');
+        const core = document.getElementById('voice-core');
+        if (core) {
+            core.style.transform = 'scale(0.8)';
+            core.style.opacity = '0.6';
+        }
+    }
+
+    // ─── 4. 情报解码打字机 (Decryption Effect) ───
+    async function typeWriter(element, text) {
+        // [HOTFIX] 世代递增，使旧实例的 interval 检测到不匹配后自行终止
+        const myGen = ++State.typeWriterGen;
+
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+        element.innerHTML = '';
+
+        let currentIndex = 0;
+
+        return new Promise(resolve => {
+            const interval = setInterval(() => {
+                // [HOTFIX] 当前实例已被新实例取代，静默退出
+                if (myGen !== State.typeWriterGen) {
+                    clearInterval(interval);
+                    resolve();
+                    return;
+                }
+
+                if (currentIndex >= text.length) {
+                    clearInterval(interval);
+                    resolve();
+                    return;
+                }
+
+                // 生成当前部分：已解码文本 + 1个乱码块
+                let displayedText = text.substring(0, currentIndex);
+                const randomChar = chars[Math.floor(Math.random() * chars.length)];
+
+                element.innerHTML = displayedText + `<span class="decrypt-char">${randomChar}</span>`;
+
+                // 偶尔推进进度，模拟处理延迟
+                if (Math.random() > 0.1) {
+                    currentIndex++;
+                }
+            }, 30); // 打字速度
+        });
+    }
+
+    // ─── 5. UI 逻辑与 Glitch ───
+    function triggerGlitch() {
+        const container = document.getElementById('terminal-container');
+        container.classList.add('glitch-active');
         setTimeout(() => {
-            // 触发 Glitch
-            panel.classList.add('glitch-snap-active');
-            
-            // 50ms 后移除 (极短)
-            setTimeout(() => {
-                panel.classList.remove('glitch-snap-active');
-            }, 50);
-
-            // 递归调度下一次
-            scheduleRandomGlitch();
-        }, nextTime);
+            container.classList.remove('glitch-active');
+        }, CONFIG.glitchDuration);
     }
 
-
-    // ─── 控制逻辑 ───
-    playBtn.addEventListener('click', () => {
-        initAudio();
-        
-        // 恢复 AudioContext (浏览器策略)
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-
-        if (isPlaying) {
-            audioElement.pause();
-            playBtn.innerText = "CONNECT";
-            playBtn.style.background = "transparent";
-            playBtn.style.color = "var(--ba-text)";
+    // [HOTFIX] UI 状态同步函数，确保图标、灯光与 isPlaying 绝对一致
+    function syncPlayUI(playing) {
+        const pIcon = document.getElementById('icon-play');
+        const pauseIcon = document.getElementById('icon-pause');
+        const recLight = document.getElementById('rec-light');
+        State.isPlaying = playing;
+        if (playing) {
+            pIcon.style.display = 'none';
+            pauseIcon.style.display = 'block';
+            recLight.classList.add('rec-active');
         } else {
-            audioElement.play();
-            playBtn.innerText = "ABORT";
-            playBtn.style.background = "var(--ba-text)";
-            playBtn.style.color = "#fff";
+            pIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            recLight.classList.remove('rec-active');
+            document.querySelectorAll('.news-item').forEach(el => el.classList.remove('processing'));
         }
-        isPlaying = !isPlaying;
+    }
+
+    function togglePlay() {
+        const audio = document.getElementById('audio-source');
+
+        // 必须在第一次点击时初始化 AudioContext
+        initAudioSystem();
+
+        // [HOTFIX] 仅在 audioCtx 成功初始化后才尝试 resume
+        if (State.audioCtx && State.audioCtx.state === 'suspended') {
+            State.audioCtx.resume().catch(() => {});
+        }
+
+        if (audio.paused) {
+            triggerGlitch(); // 播放时触发故障特效
+
+            // [HOTFIX] audio.play() 返回 Promise，必须捕获 rejection，否则播放失败时 UI 不回滚
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    syncPlayUI(true);
+                    startRenderLoop(); // [HOTFIX] 通过统一入口启动，防止 RAF 叠加
+                    const firstNews = document.querySelector('.news-item');
+                    if (firstNews) firstNews.classList.add('processing');
+                }).catch(e => {
+                    // [HOTFIX] 播放失败 → UI 强制回滚到暂停状态
+                    console.warn('[HOTFIX] Audio play() rejected:', e);
+                    syncPlayUI(false);
+                });
+            } else {
+                // 旧版浏览器不返回 Promise 的降级路径
+                syncPlayUI(true);
+                startRenderLoop();
+                const firstNews = document.querySelector('.news-item');
+                if (firstNews) firstNews.classList.add('processing');
+            }
+
+        } else {
+            audio.pause();
+            syncPlayUI(false);
+        }
+    }
+
+    // ─── 音频事件处理（具名函数，防止 removeEventListener 失效） ───
+
+    function _onTimeUpdate() {
+        const audio = document.getElementById('audio-source');
+        // [HOTFIX] duration 可能为 NaN，加保护
+        if (audio.duration && !isNaN(audio.duration)) {
+            const pct = (audio.currentTime / audio.duration) * 100;
+            document.getElementById('progress-fill').style.width = pct + '%';
+        }
+    }
+
+    function _onAudioEnded() {
+        // [HOTFIX] 原代码调用 togglePlay() 复位，但 ended 时 audio.paused=true，
+        // togglePlay 会误判为"需要播放"并再次调用 play()。改为直接复位 UI。
+        syncPlayUI(false);
+        document.getElementById('progress-fill').style.width = '0%';
+        resetVisuals();
+    }
+
+    function _onAudioError(e) {
+        // [HOTFIX] 音频加载失败时的 graceful fallback，隐藏播放器而不是崩溃
+        console.warn('[HOTFIX] Audio element error:', e);
+        syncPlayUI(false);
+        resetVisuals();
+        document.getElementById('audio-wrapper').style.display = 'none';
+    }
+
+    // ─── 6. 数据加载与渲染 ───
+
+    let _clockInterval = null; // [HOTFIX] 持有 interval ID 以便页面隐藏时暂停
+
+    function _startClock() {
+        if (_clockInterval) return;
+        _clockInterval = setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock-time').innerText =
+                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            // 随机波动信号强度
+            const bars = document.querySelectorAll('.signal-bar');
+            bars.forEach(b => {
+                if (Math.random() > 0.5) b.classList.toggle('active');
+            });
+        }, 1000);
+    }
+
+    // [HOTFIX] 页面隐藏时暂停 setInterval 和 RAF，恢复时重启
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearInterval(_clockInterval);
+            _clockInterval = null;
+            // 暂停 RAF 循环（不改变 isPlaying 状态）
+            if (State.rafId !== null) {
+                cancelAnimationFrame(State.rafId);
+                State.rafId = null;
+            }
+        } else {
+            _startClock();
+            // 如果仍在播放状态，恢复 RAF 循环
+            if (State.isPlaying && State.rafId === null) {
+                startRenderLoop();
+            }
+        }
     });
 
-    // ─── 初始化 ───
-    (function init() {
-        // 启动时钟
-        setInterval(() => {
-            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-GB');
-        }, 1000);
+    async function init() {
+        // 更新时钟
+        _startClock(); // [HOTFIX] 使用具名函数，配合 visibilitychange 可暂停/恢复
 
-        // 启动渲染循环
-        renderLoop();
+        // 加载数据
+        try {
+            // 优先读取缓存
+            const cached = localStorage.getItem(CONFIG.cacheKey);
+            if (cached) renderUI(JSON.parse(cached));
 
-        // 启动文字
-        typeWriter(targetText);
+            // 网络请求
+            const res = await fetch(`${CONFIG.api}?t=${Date.now()}`);
+            const data = await res.json();
 
-        // 启动随机故障
-        scheduleRandomGlitch();
-    })();
+            // 更新缓存与UI
+            const validData = data.data || data; // 兼容不同结构
+            localStorage.setItem(CONFIG.cacheKey, JSON.stringify(validData));
+            renderUI(validData);
+
+        } catch (e) {
+            console.warn('Intel fetch failed, switching to offline mode.', e);
+            document.getElementById('weiyu-text').innerText = "CONNECTION LOST. PLEASE CHECK SCHALE NETWORK.";
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        }
+    }
+
+    function renderUI(data) {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+
+        // 1. 日期
+        document.getElementById('date-display').innerText = data.date || "UNKNOWN DATE";
+
+        // 2. 语录 (带解码动画)
+        // [HOTFIX] typeWriter 内部的世代机制会自动取消上一次调用（cache→network 双触发场景）
+        const text = data.weiyu || "Welcome back, Sensei.";
+        typeWriter(document.getElementById('weiyu-text'), text);
+
+        // 3. 音频
+        const audioWrap = document.getElementById('audio-wrapper');
+        const audio = document.getElementById('audio-source');
+        if (data.audio) {
+            audioWrap.style.display = 'block';
+            audio.src = data.audio;
+
+            // [HOTFIX] 先 remove 再 add，防止 renderUI 多次调用导致监听器重复叠加
+            audio.removeEventListener('timeupdate', _onTimeUpdate);
+            audio.removeEventListener('ended', _onAudioEnded);
+            audio.removeEventListener('error', _onAudioError);
+            audio.addEventListener('timeupdate', _onTimeUpdate);
+            audio.addEventListener('ended', _onAudioEnded);
+            audio.addEventListener('error', _onAudioError);
+        }
+
+        // 4. 新闻列表
+        const list = document.getElementById('news-list');
+        list.innerHTML = '';
+        if (data.news && Array.isArray(data.news)) {
+            data.news.forEach((item, idx) => {
+                const li = document.createElement('li');
+                li.className = 'news-item';
+                // 解析序号
+                let indexNum = String(idx + 1).padStart(2, '0');
+                let content = item;
+                const match = item.match(/^(\d+)[、.](.*)/);
+                if (match) { content = match[2]; }
+
+                li.innerHTML = `
+                    <div class="news-index">${indexNum}</div>
+                    <div class="news-content">${content}</div>
+                `;
+                list.appendChild(li);
+            });
+        }
+    }
+
+    // 绑定事件
+    document.getElementById('play-btn').addEventListener('click', togglePlay);
+
+    // 启动
+    window.onload = init;
 
 </script>
 </body>
