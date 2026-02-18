@@ -2578,7 +2578,7 @@ function renderUI(data) {
   const tlp       = document.getElementById('tactical-link-panel');
 
   if (data.audio) {
-    audio.crossOrigin = 'anonymous';
+    configureAudioSource(audio, data.audio);
     audio.src = data.audio;
     audioWrap.style.display = 'block';
     if (tlp) tlp.style.display = 'none';
@@ -2647,6 +2647,23 @@ document.addEventListener('visibilitychange', () => {
 });
 
 document.addEventListener('DOMContentLoaded', init);
+
+function shouldUseAnonymousCrossOrigin(url) {
+  try {
+    const parsed = new URL(url, window.location.href);
+    return parsed.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+function configureAudioSource(audio, url) {
+  if (shouldUseAnonymousCrossOrigin(url)) {
+    audio.crossOrigin = 'anonymous';
+    return;
+  }
+  audio.removeAttribute('crossorigin');
+}
 
 function normalizeZaobaoPayload(raw) {
   if (!raw || typeof raw !== 'object') return DEMO;
