@@ -684,6 +684,94 @@ body::before {
 .tag-health  { background: rgba(255,170,178,0.2);  color: var(--pink-dark); }
 
 /* ═══════════════════════════════════════════════
+   PAGINATION
+═══════════════════════════════════════════════ */
+.pagination {
+  padding: 0 18px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  z-index: 10;
+}
+.page-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,170,178,0.35);
+  background: var(--glass-inner);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--t-fast) cubic-bezier(0.34,1.56,0.64,1),
+    box-shadow var(--t-fast),
+    border-color var(--t-mid),
+    opacity var(--t-mid);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.page-btn svg {
+  width: 14px; height: 14px;
+  fill: var(--pink-dark);
+  pointer-events: none;
+}
+.page-btn:active, .page-btn.pressed {
+  transform: scale(0.88);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.page-btn.released {
+  transform: scale(1.1);
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.page-btn.disabled {
+  opacity: 0.28;
+  pointer-events: none;
+}
+.page-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+.page-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 100px;
+  background: rgba(186,200,216,0.5);
+  transition: background var(--t-mid), width var(--t-mid), box-shadow var(--t-mid);
+  cursor: default;
+}
+.page-dot.active {
+  background: var(--pink);
+  width: 18px;
+  box-shadow: 0 0 6px rgba(255,142,153,0.4);
+}
+.page-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  min-width: 44px;
+  text-align: center;
+}
+/* Page-turn animations */
+.news-list.exit-prev { animation: exitPrev 0.2s cubic-bezier(0.4,0,1,1) forwards; }
+.news-list.exit-next { animation: exitNext 0.2s cubic-bezier(0.4,0,1,1) forwards; }
+.news-list.enter-prev { animation: enterPrev 0.28s cubic-bezier(0,0,0.2,1) forwards; }
+.news-list.enter-next { animation: enterNext 0.28s cubic-bezier(0,0,0.2,1) forwards; }
+@keyframes exitNext  { to { opacity: 0; transform: translateX(-22px); } }
+@keyframes exitPrev  { to { opacity: 0; transform: translateX(22px); } }
+@keyframes enterNext { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes enterPrev { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+
+/* ═══════════════════════════════════════════════
    FOOTER NAV BAR
 ═══════════════════════════════════════════════ */
 .footer-nav {
@@ -701,19 +789,17 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  cursor: pointer;
-  transition: transform var(--t-fast) cubic-bezier(0.34,1.56,0.64,1), opacity var(--t-fast);
+  cursor: default;
+  pointer-events: none;
   padding: 4px 8px;
   border-radius: 10px;
   -webkit-tap-highlight-color: transparent;
 }
-.nav-btn:active, .nav-btn.pressed {
-  transform: scale(0.9);
-  opacity: 0.75;
-}
-.nav-btn.released {
-  transform: scale(1.05);
-  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+.nav-btn.pressed,
+.nav-btn.released,
+.nav-btn:active {
+  transform: none;
+  opacity: 1;
 }
 .nav-icon {
   width: 22px; height: 22px;
@@ -997,6 +1083,18 @@ body::before {
   </div>
 
   <ul class="news-list reveal-item" id="news-list" style="transition-delay:0.25s"></ul>
+
+  <!-- ── PAGINATION ── -->
+  <div class="pagination reveal-item" id="pagination" style="transition-delay:0.28s">
+    <button class="page-btn disabled" id="page-prev" aria-label="上一页">
+      <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+    </button>
+    <div class="page-dots" id="page-dots"></div>
+    <div class="page-label" id="page-label">1 / 1</div>
+    <button class="page-btn disabled" id="page-next" aria-label="下一页">
+      <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+    </button>
+  </div>
 
   <!-- ── FOOTER NAV ── -->
   <div class="footer-nav reveal-item" style="transition-delay:0.3s">
@@ -1540,6 +1638,136 @@ function resetIdleTimers() {
 })();
 
 /* ═══════════════════════════════════════════════
+   PAGINATOR
+   5 items/page · state-aware · animated transitions
+═══════════════════════════════════════════════ */
+const Paginator = (() => {
+  const PER_PAGE = 5;
+  let _data = [];
+  let _page = 0;   // zero-based
+  let _total = 0;
+  let _busy = false;
+
+  function totalPages() { return Math.ceil(_data.length / PER_PAGE); }
+
+  function buildItems(pageIdx, globalOffset) {
+    const list = document.getElementById('news-list');
+    list.innerHTML = '';
+    const slice = _data.slice(pageIdx * PER_PAGE, pageIdx * PER_PAGE + PER_PAGE);
+    slice.forEach((item, i) => {
+      const globalIdx = pageIdx * PER_PAGE + i;
+      const li = document.createElement('li');
+      li.className = 'news-item';
+      li.setAttribute('role', 'button');
+      li.innerHTML = `
+        <div class="news-index">${String(globalIdx + 1).padStart(2,'0')}</div>
+        <div class="news-content">${item.text}</div>
+        <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
+      `;
+      applyTouchFeedback(li);
+      li.addEventListener('click', () => {
+        if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
+        li.classList.add('processing-scan');
+        setTimeout(() => li.classList.remove('processing-scan'), 1500);
+      });
+      list.appendChild(li);
+    });
+  }
+
+  function updateControls() {
+    const pages = totalPages();
+    const prevBtn = document.getElementById('page-prev');
+    const nextBtn = document.getElementById('page-next');
+    const label   = document.getElementById('page-label');
+    const dotsEl  = document.getElementById('page-dots');
+
+    prevBtn.classList.toggle('disabled', _page === 0);
+    nextBtn.classList.toggle('disabled', _page >= pages - 1);
+    label.textContent = `${_page + 1} / ${pages}`;
+
+    // Rebuild dots
+    dotsEl.innerHTML = '';
+    for (let i = 0; i < pages; i++) {
+      const d = document.createElement('div');
+      d.className = 'page-dot' + (i === _page ? ' active' : '');
+      dotsEl.appendChild(d);
+    }
+  }
+
+  function goTo(newPage, direction) {
+    if (_busy) return;
+    const pages = totalPages();
+    if (newPage < 0 || newPage >= pages) return;
+    _busy = true;
+
+    const list = document.getElementById('news-list');
+
+    // Exit animation
+    const exitCls = direction > 0 ? 'exit-next' : 'exit-prev';
+    list.classList.add(exitCls);
+
+    // Brief PROCESSING flash on terminal
+    if (FSM.state === 'IDLE' || FSM.state === 'STANDBY') {
+      const badge = document.getElementById('state-badge');
+      badge.textContent = 'PROCESSING';
+      badge.className = 'state-badge processing';
+    }
+
+    setTimeout(() => {
+      list.classList.remove(exitCls);
+      _page = newPage;
+      buildItems(_page);
+      updateControls();
+
+      // Enter animation
+      const enterCls = direction > 0 ? 'enter-next' : 'enter-prev';
+      list.classList.add(enterCls);
+      list.addEventListener('animationend', () => {
+        list.classList.remove(enterCls);
+        _busy = false;
+        // Restore badge
+        if (FSM.state === 'IDLE' || FSM.state === 'STANDBY') {
+          const badge = document.getElementById('state-badge');
+          badge.textContent = FSM.state;
+          badge.className = `state-badge ${FSM.state.toLowerCase()}`;
+        }
+      }, { once: true });
+    }, 200);
+  }
+
+  function init(data) {
+    _data = data;
+    _page = 0;
+    _busy = false;
+    const pages = totalPages();
+
+    // Show / hide pagination if only 1 page
+    document.getElementById('pagination').style.display = pages <= 1 ? 'none' : 'flex';
+
+    buildItems(0);
+    updateControls();
+
+    // Bind buttons
+    const prevBtn = document.getElementById('page-prev');
+    const nextBtn = document.getElementById('page-next');
+
+    // Remove old listeners by cloning
+    const newPrev = prevBtn.cloneNode(true);
+    const newNext = nextBtn.cloneNode(true);
+    prevBtn.replaceWith(newPrev);
+    nextBtn.replaceWith(newNext);
+
+    applyTouchFeedback(newPrev);
+    applyTouchFeedback(newNext);
+
+    newPrev.addEventListener('click', () => goTo(_page - 1, -1));
+    newNext.addEventListener('click', () => goTo(_page + 1, +1));
+  }
+
+  return { init };
+})();
+
+/* ═══════════════════════════════════════════════
    RENDER UI
 ═══════════════════════════════════════════════ */
 function renderUI(data) {
@@ -1570,24 +1798,8 @@ function renderUI(data) {
   const countEl = document.getElementById('news-count');
   if (countEl) countEl.textContent = `${newsData.length}件`;
 
-  list.innerHTML = '';
-  newsData.forEach((item, idx) => {
-    const li = document.createElement('li');
-    li.className = 'news-item';
-    li.setAttribute('role','button');
-    li.innerHTML = `
-      <div class="news-index">${String(idx + 1).padStart(2,'0')}</div>
-      <div class="news-content">${item.text}</div>
-      <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
-    `;
-    applyTouchFeedback(li);
-    li.addEventListener('click', () => {
-      if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
-      li.classList.add('processing-scan');
-      setTimeout(() => li.classList.remove('processing-scan'), 1500);
-    });
-    list.appendChild(li);
-  });
+  /* ── Bootstrap Paginator ── */
+  Paginator.init(newsData);
 
   /* weiyu text — strip leading 【微语】 prefix if present */
   const weiyuEl = document.getElementById('weiyu-text');
@@ -1629,15 +1841,6 @@ async function init() {
   const vcore = document.getElementById('voice-core');
   applyTouchFeedback(vcore);
   vcore.addEventListener('click', togglePlay);
-
-  /* bind nav buttons */
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    applyTouchFeedback(btn);
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
 
   /* try API, fallback to demo */
   try {
