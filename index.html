@@ -2113,6 +2113,13 @@ function resetIdleTimers() {
   }, CONFIG.standbyDelay);
 }
 
+function bindWakeEvents() {
+  const wakeEvents = ['touchstart', 'pointerdown', 'click', 'keydown', 'mousemove', 'scroll'];
+  wakeEvents.forEach(ev => {
+    document.addEventListener(ev, resetIdleTimers, { passive: true });
+  });
+}
+
 /* ═══════════════════════════════════════════════
    TOUCH FEEDBACK (v5: enhanced with pixel burst)
 ═══════════════════════════════════════════════ */
@@ -2613,6 +2620,7 @@ async function init() {
   TiltEngine.init();
   NeuralReflex.bind();
   LowActivity.init();
+  bindWakeEvents();
   RubberBand.init();
   MagneticScroll.init();
 
