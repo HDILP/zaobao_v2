@@ -1597,6 +1597,7 @@ const FocusMode = (() => {
 
   function bindItem(el) {
     let holdTriggered = false;
+    let suppressNextClick = false;
 
     function startHold(x, y) {
       _startX = x; _startY = y;
@@ -1619,6 +1620,7 @@ const FocusMode = (() => {
       clearTimeout(_pressTimer);
       // Keep focus after successful long-press; do not instantly exit on finger/mouse release.
       if (holdTriggered) {
+        suppressNextClick = true;
         holdTriggered = false;
         return;
       }
@@ -1629,6 +1631,15 @@ const FocusMode = (() => {
         exit();
       }
     }
+
+    // Long-press often emits a follow-up click on mobile browsers.
+    // Swallow that synthetic click to avoid accidentally toggling item expand.
+    el.addEventListener('click', e => {
+      if (!suppressNextClick) return;
+      suppressNextClick = false;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }, true);
 
     el.addEventListener('touchstart', e => {
       const t = e.touches[0];
