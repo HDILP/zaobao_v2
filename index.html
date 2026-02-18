@@ -2185,6 +2185,7 @@ function typeWriter(el, text, onDone) {
    AUDIO SYSTEM
 ═══════════════════════════════════════════════ */
 let _audioCtx = null, _analyser = null, _source = null, _vizRaf = null;
+let _audioGraphReady = false;
 let _mockProcessTimer = null, _mockSpeakTimer = null;
 
 function clearMockPlaybackTimers() {
@@ -2192,19 +2193,29 @@ function clearMockPlaybackTimers() {
   if (_mockSpeakTimer)   { clearTimeout(_mockSpeakTimer); _mockSpeakTimer = null; }
 }
 function initAudio() {
-  if (_audioCtx) return;
+  if (_audioCtx || _audioGraphReady) return;
+  const audio = document.getElementById('audio-source');
+  if (!audio) return;
+
   try {
     _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     _analyser = _audioCtx.createAnalyser();
     _analyser.fftSize = 64;
-    _analyser.connect(_audioCtx.destination);
-    const audio = document.getElementById('audio-source');
     _source = _audioCtx.createMediaElementSource(audio);
     _source.connect(_analyser);
-  } catch(e) { console.warn('[Audio]', e); }
+    _analyser.connect(_audioCtx.destination);
+    _audioGraphReady = true;
+  } catch(e) {
+    // CORS not allowed -> cannot analyze cross-origin media via WebAudio.
+    // Fallback to native <audio> playback so users can still hear sound.
+    _audioGraphReady = false;
+    _source = null;
+    _analyser = null;
+    console.warn('[Audio] WebAudio analyser unavailable, fallback to native playback.', e);
+  }
 }
 function startVizLoop() {
-  if (!_analyser || _vizRaf) return;
+  if (!_audioGraphReady || !_analyser || _vizRaf) return;
   const buf = new Uint8Array(_analyser.frequencyBinCount);
   function loop() {
     _analyser.getByteFrequencyData(buf);
@@ -2262,7 +2273,6 @@ function togglePlay() {
   }
   clearMockPlaybackTimers();
   if (audio.paused) {
-    triggerGlitch();
     audio.play().then(() => {
       FSM.transition('SPEAKING');
       playI.style.display = 'none'; pauseI.style.display = 'block';
@@ -2568,6 +2578,7 @@ function renderUI(data) {
   const tlp       = document.getElementById('tactical-link-panel');
 
   if (data.audio) {
+    audio.crossOrigin = 'anonymous';
     audio.src = data.audio;
     audioWrap.style.display = 'block';
     if (tlp) tlp.style.display = 'none';
