@@ -434,7 +434,7 @@ body.focus-mode #focus-veil {
   padding: 14px 15px 13px; position: relative;
   box-shadow: 0 3px 14px rgba(255,170,178,0.08), 0 1px 5px rgba(125,227,248,0.06);
   transition: box-shadow var(--t-mid), border-color var(--t-mid), opacity var(--t-slow);
-  min-height: 58px; overflow: hidden;
+  min-height: 58px; overflow: visible;
 }
 /* V5: resonance tint layer — extremely subtle */
 .weiyu-card::before {
@@ -448,7 +448,7 @@ body.focus-mode #focus-veil {
 .weiyu-card.speaking  { border-color: var(--pink-dark); box-shadow: 0 2px 22px rgba(255,142,153,0.22), 0 1px 8px rgba(125,227,248,0.1); }
 .weiyu-card.idle-nudge{ box-shadow: 0 2px 24px rgba(255,170,178,0.3), 0 1px 10px rgba(125,227,248,0.15); }
 .weiyu-label {
-  position: absolute; top: -9px; left: 10px;
+  position: absolute; top: -9px; left: 10px; z-index: 2;
   background: var(--pink); color: white;
   font-size: 8px; padding: 2px 9px; border-radius: 4px;
   font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
