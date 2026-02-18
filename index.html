@@ -2386,15 +2386,18 @@ const Paginator = (() => {
   let _resizeTimer = null;
   window.addEventListener('resize', () => {
     clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(() => { if (_data.length) init(_data); }, 250);
+    _resizeTimer = setTimeout(() => { if (_data.length) init(_data, { preservePage: true }); }, 250);
   });
 
-  function init(data) {
-    _data = data; _page = 0; _busy = false;
+  function init(data, opts = {}) {
+    const { preservePage = false } = opts;
+    _data = data;
+    _page = preservePage ? Math.min(_page, Math.max(totalPages() - 1, 0)) : 0;
+    _busy = false;
     if (isMobile()) {
       const pages = totalPages();
       document.getElementById('pagination').style.display = pages <= 1 ? 'none' : 'flex';
-      buildItems(0); updateControls(); bindBtns();
+      buildItems(_page); updateControls(); bindBtns();
     } else {
       document.getElementById('pagination').style.display = 'none';
       buildAll();
