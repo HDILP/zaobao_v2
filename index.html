@@ -76,6 +76,21 @@ body::before {
   pointer-events: none; z-index: 0;
 }
 
+body::after {
+  content: '';
+  position: fixed;
+  inset: -25%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255, 175, 198, 0.16), transparent 36%),
+    radial-gradient(circle at 88% 18%, rgba(125, 227, 248, 0.18), transparent 34%),
+    radial-gradient(circle at 52% 82%, rgba(96, 212, 200, 0.14), transparent 40%);
+  transform: translate3d(calc(var(--desk-shift-x, 0px) * 0.08), calc(var(--desk-shift-y, 0px) * 0.1), 0);
+  transition: opacity 0.35s ease;
+}
+
 /* breath overlay */
 #bg-breath-overlay {
   position: fixed; inset: 0;
@@ -129,6 +144,57 @@ body.focus-mode #focus-veil {
 }
 .side-strip-l { left: 6px; }
 .side-strip-r { right: 6px; transform: translateY(-50%) rotate(180deg); }
+
+#desktop-overdrive {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#desktop-overdrive::before,
+#desktop-overdrive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+#desktop-overdrive::before {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255,170,178,0.22), transparent 32%),
+    radial-gradient(circle at 82% 25%, rgba(125,227,248,0.2), transparent 34%),
+    radial-gradient(circle at 46% 78%, rgba(96,212,200,0.16), transparent 36%);
+  mix-blend-mode: screen;
+  filter: blur(1px);
+  transform: translate3d(calc(var(--desk-shift-x, 0px) * 0.09), calc(var(--desk-shift-y, 0px) * 0.11), 0);
+  animation: overdrive-float 19s ease-in-out infinite alternate;
+}
+#desktop-overdrive::after {
+  background-image:
+    repeating-linear-gradient(90deg,
+      rgba(125,227,248,0.08) 0,
+      rgba(125,227,248,0.08) 1px,
+      transparent 1px,
+      transparent 48px),
+    linear-gradient(180deg,
+      transparent,
+      rgba(125,227,248,0.06),
+      transparent);
+  background-size: 100% 100%, 100% 240%;
+  background-position: 0 0, 0 calc(var(--desk-scan-y, 0%) + 5%);
+  mask-image: linear-gradient(180deg, transparent, rgba(0,0,0,0.55) 12%, rgba(0,0,0,0.6) 88%, transparent);
+  animation: desk-grid-pulse 8s ease-in-out infinite;
+}
+
+@keyframes overdrive-float {
+  0%   { transform: translate3d(calc(var(--desk-shift-x, 0px) * 0.08), calc(var(--desk-shift-y, 0px) * 0.09), 0) scale(1); }
+  50%  { transform: translate3d(calc(var(--desk-shift-x, 0px) * 0.16), calc(var(--desk-shift-y, 0px) * 0.18), 0) scale(1.04); }
+  100% { transform: translate3d(calc(var(--desk-shift-x, 0px) * -0.09), calc(var(--desk-shift-y, 0px) * -0.11), 0) scale(0.98); }
+}
+@keyframes desk-grid-pulse {
+  0%, 100% { opacity: 0.32; }
+  50% { opacity: 0.6; }
+}
 
 /* ── V5: Perspective wrapper with rubber-band support ── */
 #perspective-wrap {
@@ -889,12 +955,158 @@ body.focus-mode #focus-veil {
   .voice-core.idle-pulse-anim {
     animation: none !important;
   }
+  #desktop-overdrive::before,
+  #desktop-overdrive::after,
+  .terminal.desktop-overdrive,
+  .terminal.desktop-overdrive::after,
+  .terminal.desktop-overdrive .weiyu-card,
+  .terminal.desktop-overdrive .player-card,
+  .terminal.desktop-overdrive .widget,
+  .terminal.desktop-overdrive .news-item,
+  .terminal.desktop-overdrive .news-item::before,
+  .terminal.desktop-overdrive .page-btn,
+  .terminal.desktop-overdrive #voice-core {
+    animation: none !important;
+  }
   .reveal-item,
   .news-summary,
   .news-item,
   .page-btn,
   .voice-core {
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    padding: 30px 0 72px;
+  }
+
+  body::after,
+  #desktop-overdrive {
+    opacity: 1;
+  }
+
+  .terminal {
+    max-width: 980px;
+    border-radius: 28px;
+    transform-origin: center 38%;
+  }
+
+  .terminal.desktop-overdrive {
+    animation:
+      terminal-breath 4.8s ease-in-out infinite,
+      terminal-overdrive-drift 16s ease-in-out infinite;
+  }
+  .terminal.desktop-overdrive::after {
+    animation:
+      scanMove var(--scan-speed, 40s) linear infinite,
+      desktop-scan-shimmer 5.5s linear infinite;
+  }
+
+  .terminal.desktop-overdrive .tactic-widgets,
+  .terminal.desktop-overdrive .news-panel,
+  .terminal.desktop-overdrive .footer-nav {
+    transform: translate3d(0, calc(var(--desk-parallax, 0px) * -0.28), 0);
+    transition: transform 0.36s cubic-bezier(0.22,1,0.36,1);
+  }
+
+  .terminal.desktop-overdrive .weiyu-card,
+  .terminal.desktop-overdrive .player-card,
+  .terminal.desktop-overdrive .widget,
+  .terminal.desktop-overdrive .news-item {
+    transform-style: preserve-3d;
+    transition:
+      transform 0.46s cubic-bezier(0.2, 0.9, 0.2, 1.2),
+      box-shadow 0.35s ease,
+      border-color 0.3s ease,
+      filter 0.35s ease;
+  }
+
+  .terminal.desktop-overdrive .widget {
+    animation: module-breathe 6.8s ease-in-out infinite;
+  }
+
+  .terminal.desktop-overdrive .weiyu-card,
+  .terminal.desktop-overdrive .player-card {
+    animation: module-breathe 7.2s ease-in-out infinite;
+  }
+
+  .terminal.desktop-overdrive .news-item {
+    animation: news-idle-energize 4.6s ease-in-out infinite;
+  }
+
+  .terminal.desktop-overdrive .news-item::before {
+    opacity: 0.46;
+    animation: scan-sweep 2.1s linear infinite;
+  }
+
+  .terminal.desktop-overdrive .news-item:hover {
+    transform: perspective(880px) translate3d(0, -6px, 14px) rotateX(4deg) rotateY(-3deg) scale(1.012);
+    box-shadow:
+      0 16px 26px rgba(125,227,248,0.2),
+      0 8px 18px rgba(255,170,178,0.18);
+    filter: saturate(1.1) brightness(1.02);
+  }
+
+  .terminal.desktop-overdrive .weiyu-card:hover,
+  .terminal.desktop-overdrive .player-card:hover,
+  .terminal.desktop-overdrive .widget:hover {
+    transform: perspective(960px) translate3d(0, -7px, 20px) rotateX(5.5deg) rotateY(-4deg) scale(1.018);
+    box-shadow:
+      0 22px 34px rgba(255,170,178,0.2),
+      0 10px 22px rgba(125,227,248,0.18);
+  }
+
+  .terminal.desktop-overdrive .page-btn,
+  .terminal.desktop-overdrive #voice-core {
+    transition: transform 0.28s cubic-bezier(0.2, 1.25, 0.25, 1), box-shadow 0.26s ease;
+  }
+  .terminal.desktop-overdrive .page-btn:hover,
+  .terminal.desktop-overdrive #voice-core:hover {
+    transform: translateY(-2px) scale(1.06);
+    box-shadow: 0 0 0 2px rgba(125,227,248,0.25), 0 8px 15px rgba(90,176,232,0.24);
+  }
+  .terminal.desktop-overdrive .page-btn:active,
+  .terminal.desktop-overdrive #voice-core:active {
+    animation: spring-tap 0.42s cubic-bezier(0.2, 1.45, 0.28, 1);
+  }
+
+  .terminal.desktop-overdrive .news-content {
+    background: linear-gradient(120deg, var(--text), rgba(90,176,232,0.92), var(--text));
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: text-flow 5.2s linear infinite;
+  }
+
+  @keyframes terminal-overdrive-drift {
+    0%, 100% { filter: hue-rotate(0deg) saturate(1); }
+    50% { filter: hue-rotate(4deg) saturate(1.04); }
+  }
+  @keyframes desktop-scan-shimmer {
+    0% { opacity: 0.35; }
+    45% { opacity: 0.62; }
+    100% { opacity: 0.34; }
+  }
+  @keyframes module-breathe {
+    0%, 100% { transform: translateZ(0); box-shadow: 0 1px 12px rgba(90,176,232,0.08); }
+    50% { transform: translateZ(8px); box-shadow: 0 9px 24px rgba(90,176,232,0.14); }
+  }
+  @keyframes news-idle-energize {
+    0%, 100% { box-shadow: 0 1px 9px rgba(96,212,200,0.08); }
+    50% { box-shadow: 0 5px 18px rgba(96,212,200,0.16); }
+  }
+  @keyframes spring-tap {
+    0% { transform: scale(1.05); }
+    35% { transform: scale(0.9); }
+    62% { transform: scale(1.11); }
+    100% { transform: scale(1.02); }
+  }
+  @keyframes text-flow {
+    from { background-position: 0% 50%; }
+    to   { background-position: 220% 50%; }
   }
 }
 
@@ -1098,6 +1310,7 @@ body.focus-mode #focus-veil {
 
 <div id="bg-breath-overlay"></div>
 <canvas id="dust-canvas"></canvas>
+<div id="desktop-overdrive"></div>
 <div id="focus-veil"></div>
 
 <div class="side-strip side-strip-l">SCHALE INTEL · TACTICAL BRIEF · KIVOTOS</div>
@@ -1416,6 +1629,79 @@ const TiltEngine = (() => {
         window.addEventListener('mouseleave', () => { tx = 0; ty = 0; }, { passive: true });
       }
       raf = requestAnimationFrame(tick);
+    }
+  };
+})();
+
+/* ═══════════════════════════════════════════════
+   DESKTOP OVERDRIVE ENGINE
+   Desktop-only kinetic layers and parallax variables.
+═══════════════════════════════════════════════ */
+const DesktopOverdrive = (() => {
+  let active = false;
+  let raf = null;
+  let tickT = 0;
+  let pointerX = 0, pointerY = 0;
+  let smoothX = 0, smoothY = 0;
+  let targetParallax = 0, smoothParallax = 0;
+
+  function enableDesktopState() {
+    const term = document.getElementById('terminal');
+    if (!term) return;
+    active = window.matchMedia('(min-width: 1024px)').matches;
+    term.classList.toggle('desktop-overdrive', active);
+    if (!active) {
+      document.body.style.removeProperty('--desk-shift-x');
+      document.body.style.removeProperty('--desk-shift-y');
+      document.body.style.removeProperty('--desk-scan-y');
+      term.style.removeProperty('--desk-parallax');
+    }
+  }
+
+  function onPointerMove(e) {
+    if (!active) return;
+    const hw = window.innerWidth / 2;
+    const hh = window.innerHeight / 2;
+    pointerX = (e.clientX - hw) / hw;
+    pointerY = (e.clientY - hh) / hh;
+  }
+
+  function onScroll() {
+    if (!active) return;
+    const maxScroll = Math.max(document.body.scrollHeight - window.innerHeight, 1);
+    const pct = Math.max(0, Math.min(1, window.scrollY / maxScroll));
+    targetParallax = (pct - 0.5) * 18;
+    document.body.style.setProperty('--desk-scan-y', `${(pct * 100).toFixed(2)}%`);
+  }
+
+  function frame() {
+    tickT += 0.016;
+    if (active) {
+      smoothX += (pointerX - smoothX) * 0.075;
+      smoothY += (pointerY - smoothY) * 0.075;
+      smoothParallax += (targetParallax - smoothParallax) * 0.08;
+
+      const pulseX = Math.sin(tickT * 0.7) * 9;
+      const pulseY = Math.cos(tickT * 0.52) * 7;
+      document.body.style.setProperty('--desk-shift-x', `${(smoothX * 26 + pulseX).toFixed(2)}px`);
+      document.body.style.setProperty('--desk-shift-y', `${(smoothY * 22 + pulseY).toFixed(2)}px`);
+      const term = document.getElementById('terminal');
+      if (term) term.style.setProperty('--desk-parallax', `${smoothParallax.toFixed(2)}px`);
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  return {
+    init() {
+      enableDesktopState();
+      onScroll();
+      window.matchMedia('(min-width: 1024px)').addEventListener('change', () => {
+        enableDesktopState();
+        onScroll();
+      });
+      window.addEventListener('mousemove', onPointerMove, { passive: true });
+      window.addEventListener('scroll', onScroll, { passive: true });
+      if (!raf) raf = requestAnimationFrame(frame);
     }
   };
 })();
@@ -2623,6 +2909,7 @@ async function init() {
   bindWakeEvents();
   RubberBand.init();
   MagneticScroll.init();
+  DesktopOverdrive.init();
 
   const vcore = document.getElementById('voice-core');
   applyTouchFeedback(vcore);
