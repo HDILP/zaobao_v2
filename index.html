@@ -2130,6 +2130,15 @@ function makeSummary(text) {
   return { label: '核心摘要 · INTEL DECODED', classify, text: shortened };
 }
 
+function escapeHTML(str = '') {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /* ═══════════════════════════════════════════════
    AUDIO EVENTS
 ═══════════════════════════════════════════════ */
@@ -2179,17 +2188,22 @@ const Paginator = (() => {
       li.className    = 'news-item';
       li.setAttribute('role', 'button');
       const summary = makeSummary(item.text);
+      const safeText = escapeHTML(item.text);
+      const safeTag = escapeHTML(item.tag);
+      const safeSummaryText = escapeHTML(summary.text);
+      const safeSummaryLabel = escapeHTML(summary.label);
+      const safeSummaryClassify = escapeHTML(summary.classify);
       li.innerHTML = `
         <div class="news-main">
           <div class="news-index">${String(globalIdx+1).padStart(2,'0')}</div>
-          <div class="news-content">${item.text}</div>
-          <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
+          <div class="news-content">${safeText}</div>
+          <div class="news-tag tag-${safeTag}">${safeTag.toUpperCase()}</div>
         </div>
         <div class="news-summary">
           <div class="summary-inner">
-            <div class="summary-label">${summary.label}</div>
-            <span class="summary-classify">${summary.classify}</span>
-            <div class="summary-text">${summary.text}</div>
+            <div class="summary-label">${safeSummaryLabel}</div>
+            <span class="summary-classify">${safeSummaryClassify}</span>
+            <div class="summary-text">${safeSummaryText}</div>
           </div>
         </div>
         <div class="focus-hint">DEEP·SCAN</div>`;
@@ -2214,17 +2228,22 @@ const Paginator = (() => {
       li.className = 'news-item';
       li.setAttribute('role', 'button');
       const summary = makeSummary(item.text);
+      const safeText = escapeHTML(item.text);
+      const safeTag = escapeHTML(item.tag);
+      const safeSummaryText = escapeHTML(summary.text);
+      const safeSummaryLabel = escapeHTML(summary.label);
+      const safeSummaryClassify = escapeHTML(summary.classify);
       li.innerHTML = `
         <div class="news-main">
           <div class="news-index">${String(i+1).padStart(2,'0')}</div>
-          <div class="news-content">${item.text}</div>
-          <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
+          <div class="news-content">${safeText}</div>
+          <div class="news-tag tag-${safeTag}">${safeTag.toUpperCase()}</div>
         </div>
         <div class="news-summary">
           <div class="summary-inner">
-            <div class="summary-label">${summary.label}</div>
-            <span class="summary-classify">${summary.classify}</span>
-            <div class="summary-text">${summary.text}</div>
+            <div class="summary-label">${safeSummaryLabel}</div>
+            <span class="summary-classify">${safeSummaryClassify}</span>
+            <div class="summary-text">${safeSummaryText}</div>
           </div>
         </div>
         <div class="focus-hint">DEEP·SCAN</div>`;
@@ -2319,10 +2338,13 @@ function renderUI(data) {
   ];
   function guessTag(t) { for (const { re, tag } of TAG_MAP) if (re.test(t)) return tag; return 'world'; }
 
+  const ALLOWED_TAGS = new Set(['tech', 'finance', 'health', 'sci', 'world']);
   const newsData = (data.news || []).map(item => {
     const str   = typeof item === 'string' ? item : (item.text || '');
     const clean = str.replace(/^\d+[、．.]\s*/, '').trim();
-    return { text: clean, tag: item.tag || guessTag(clean) };
+    const rawTag = (typeof item === 'object' && item !== null && item.tag) ? String(item.tag).toLowerCase() : guessTag(clean);
+    const tag = ALLOWED_TAGS.has(rawTag) ? rawTag : guessTag(clean);
+    return { text: clean, tag };
   });
 
   const countEl = document.getElementById('news-count');
