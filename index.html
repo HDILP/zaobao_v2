@@ -1154,7 +1154,7 @@ body.focus-mode #focus-veil {
 </div><!-- .terminal -->
 </div><!-- #perspective-wrap -->
 
-<audio id="audio-source" preload="metadata" crossorigin="anonymous"></audio>
+<audio id="audio-source" preload="metadata"></audio>
 
 <script>
 /* ═══════════════════════════════════════════════════
@@ -2250,7 +2250,11 @@ function escapeHTML(str = '') {
     stopVizLoop(); clearScanHighlight(); FSM.transition('IDLE');
   });
   audio.addEventListener('error', () => {
-    document.getElementById('audio-wrapper').style.display = 'none';
+    const pstatus = document.getElementById('player-status');
+    if (pstatus) {
+      pstatus.textContent = 'AUDIO SOURCE UNAVAILABLE';
+      pstatus.classList.remove('speaking', 'processing');
+    }
     const tlp = document.getElementById('tactical-link-panel');
     if (tlp) { tlp.style.display = 'block'; tlp.classList.add('visible'); }
   });
@@ -2504,7 +2508,7 @@ async function init() {
     const res  = await fetch(`${CONFIG.api}?t=${Date.now()}`);
     if (!res.ok) throw new Error('API unavailable');
     const json = await res.json();
-    const d    = (json.success !== undefined && json.data) ? json.data : (json.data || json);
+    const d    = normalizeZaobaoPayload(json);
     localStorage.setItem(CONFIG.cacheKey, JSON.stringify(d));
     renderUI(d);
   } catch(e) {
@@ -2523,6 +2527,27 @@ document.addEventListener('visibilitychange', () => {
 });
 
 document.addEventListener('DOMContentLoaded', init);
+
+function normalizeZaobaoPayload(raw) {
+  if (!raw || typeof raw !== 'object') return DEMO;
+
+  let payload = raw;
+  if (payload.data && typeof payload.data === 'object') {
+    payload = payload.data;
+  }
+  if (payload.data && typeof payload.data === 'object') {
+    const nested = payload.data;
+    if (nested.news || nested.audio || nested.weiyu || nested.date) {
+      payload = nested;
+    }
+  }
+
+  const audio = payload.audio || payload.audio_url || payload.voice || '';
+  return {
+    ...payload,
+    audio,
+  };
+}
 </script>
 </body>
 </html>
