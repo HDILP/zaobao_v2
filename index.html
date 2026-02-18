@@ -1032,7 +1032,7 @@ body::before {
 
 /* ── CONFIG ── */
 const CONFIG = {
-  api: '/api/morning',
+  api: './data.json',
   cacheKey: 'schale_intel_v2',
   standbyDelay: 60000,   // 60s without interaction → STANDBY
   idleNudgeMin: 40000,   // 40s
@@ -1547,9 +1547,26 @@ function renderUI(data) {
   const dateEl = document.getElementById('date-display');
   if (dateEl) dateEl.textContent = data.date || DEMO.date;
 
-  /* news */
-  const list = document.getElementById('news-list');
-  const newsData = (data.news || []).map(n => typeof n === 'string' ? { text: n, tag: 'world' } : n);
+  /* news — strip leading "1、" "2." etc. and auto-assign tags */
+  const TAG_MAP = [
+    { re: /科技|AI|芯片|机器人|大模型|电池|量子|航天|卫星|软件/, tag: 'tech' },
+    { re: /财经|经济|股|基金|房|楼市|金融|市场|收入|月入|消费/, tag: 'finance' },
+    { re: /健康|医|药|疫|病|研究|实验|临床/,                    tag: 'health' },
+    { re: /科学|物理|化学|生物|天文|发现|突破/,                  tag: 'sci' },
+  ];
+  function guessTag(text) {
+    for (const { re, tag } of TAG_MAP) if (re.test(text)) return tag;
+    return 'world';
+  }
+
+  const rawNews = data.news || [];
+  const newsData = rawNews.map(item => {
+    const str = typeof item === 'string' ? item : (item.text || '');
+    const clean = str.replace(/^\d+[、．.、]\s*/, '').trim();
+    return { text: clean, tag: guessTag(clean) };
+  });
+
+  const list    = document.getElementById('news-list');
   const countEl = document.getElementById('news-count');
   if (countEl) countEl.textContent = `${newsData.length}件`;
 
@@ -1558,16 +1575,12 @@ function renderUI(data) {
     const li = document.createElement('li');
     li.className = 'news-item';
     li.setAttribute('role','button');
-    const idx2 = String(idx + 1).padStart(2,'0');
-    const text  = typeof item === 'string' ? item : (item.text || item);
-    const tag   = item.tag || 'world';
     li.innerHTML = `
-      <div class="news-index">${idx2}</div>
-      <div class="news-content">${text}</div>
-      <div class="news-tag tag-${tag}">${tag.toUpperCase()}</div>
+      <div class="news-index">${String(idx + 1).padStart(2,'0')}</div>
+      <div class="news-content">${item.text}</div>
+      <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
     `;
     applyTouchFeedback(li);
-    // tap → trigger processing scan on single item
     li.addEventListener('click', () => {
       if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
       li.classList.add('processing-scan');
@@ -1576,19 +1589,18 @@ function renderUI(data) {
     list.appendChild(li);
   });
 
-  /* weiyu text */
+  /* weiyu text — strip leading 【微语】 prefix if present */
   const weiyuEl = document.getElementById('weiyu-text');
-  const txt = data.weiyu || DEMO.weiyu;
+  const txt = (data.weiyu || DEMO.weiyu).replace(/^【微语】\s*/, '');
   typeWriter(weiyuEl, txt, () => {});
 
   /* audio */
-  const audio = document.getElementById('audio-source');
+  const audio     = document.getElementById('audio-source');
   const audioWrap = document.getElementById('audio-wrapper');
   if (data.audio) {
     audio.src = data.audio;
     audioWrap.style.display = 'block';
   }
-  // audioWrap always shown in this design
 
   /* transition from LOADING → IDLE with reveal */
   const loadScreen = document.getElementById('loading-screen');
@@ -1634,12 +1646,13 @@ async function init() {
 
     const res  = await fetch(`${CONFIG.api}?t=${Date.now()}`);
     if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-    const d    = data.data || data;
+    const json = await res.json();
+    // Support both envelope format { success, data: {...} } and flat format
+    const d = (json.success !== undefined && json.data) ? json.data : (json.data || json);
     localStorage.setItem(CONFIG.cacheKey, JSON.stringify(d));
     renderUI(d);
   } catch(e) {
-    console.info('[Schale Terminal] API unavailable, using demo data.');
+    console.info('[Schale Terminal] data.json unavailable, using demo data.', e);
     renderUI(DEMO);
   }
 }
