@@ -2076,6 +2076,12 @@ function typeWriter(el, text, onDone) {
    AUDIO SYSTEM
 ═══════════════════════════════════════════════ */
 let _audioCtx = null, _analyser = null, _source = null, _vizRaf = null;
+let _mockProcessTimer = null, _mockSpeakTimer = null;
+
+function clearMockPlaybackTimers() {
+  if (_mockProcessTimer) { clearTimeout(_mockProcessTimer); _mockProcessTimer = null; }
+  if (_mockSpeakTimer)   { clearTimeout(_mockSpeakTimer); _mockSpeakTimer = null; }
+}
 function initAudio() {
   if (_audioCtx) return;
   try {
@@ -2124,23 +2130,28 @@ function togglePlay() {
   const pauseI = document.getElementById('pause-icon');
   if (!audio.src || audio.src === window.location.href) {
     if (FSM.state !== 'PROCESSING' && FSM.state !== 'SPEAKING') {
+      clearMockPlaybackTimers();
       playI.style.display = 'none'; pauseI.style.display = 'block';
       FSM.transition('PROCESSING'); triggerScanHighlight();
-      setTimeout(() => {
+      _mockProcessTimer = setTimeout(() => {
         FSM.transition('SPEAKING');
-        setTimeout(() => {
+        _mockSpeakTimer = setTimeout(() => {
           FSM.transition('IDLE');
           playI.style.display = 'block'; pauseI.style.display = 'none';
           clearScanHighlight();
+          _mockSpeakTimer = null;
         }, 4000);
+        _mockProcessTimer = null;
       }, 3000);
     } else {
+      clearMockPlaybackTimers();
       FSM.transition('IDLE');
       playI.style.display = 'block'; pauseI.style.display = 'none';
       clearScanHighlight();
     }
     return;
   }
+  clearMockPlaybackTimers();
   if (audio.paused) {
     triggerGlitch();
     audio.play().then(() => {
