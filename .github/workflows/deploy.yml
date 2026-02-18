@@ -6,10 +6,6 @@ on:
     - cron: '0 0 * * *'
   # 允许手动触发
   workflow_dispatch:
-  # 当推送代码到 main 分支时也触发（方便调试代码）
-  push:
-    branches:
-      - main
 
 jobs:
   fetch-and-commit:
