@@ -1,1035 +1,1661 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>早报 | Schale Intelligence</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            /* 核心配色 */
-            --ba-pink: #ffaab2;
-            --ba-pink-dark: #ff8e99;
-            --ba-pink-light: #ffeef0;
-            --ba-blue-accent: #7de3f8;          /* [STYLE TUNE] 提亮 +饱和度，糖果感 */
-            --ba-blue-deep: #5ab0e8;            /* [STYLE TUNE] 暖化一阶 */
-            --ba-text: #4c5b70;
-            --ba-text-light: #8a9bb3;
-            --glass-bg: rgba(255, 255, 255, 0.88);
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>早报 | Schale Intelligence Terminal v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  --pink:        #ffaab2;
+  --pink-dark:   #ff8e99;
+  --pink-light:  #ffeef0;
+  --pink-glow:   rgba(255,170,178,0.35);
+  --blue:        #7de3f8;
+  --blue-deep:   #5ab0e8;
+  --blue-glow:   rgba(125,227,248,0.3);
+  --teal:        #60d4c8;
+  --text:        #4c5b70;
+  --text-light:  #8a9bb3;
+  --text-faint:  #bac8d8;
+  --glass:       rgba(255,255,255,0.91);
+  --glass-inner: rgba(255,255,255,0.75);
+  --noise:       0.022;
 
-            /* 情报终端特有配色 */
-            --term-green: rgba(106, 245, 173, 0.12);
-            --term-glitch: #ff6eb4;             /* [STYLE TUNE] 从洋红→粉色，降低侵略性 */
-            --ba-shadow-deep: 0 16px 48px rgba(255, 130, 148, 0.18), 0 4px 16px rgba(125, 227, 248, 0.14);
-            --ba-noise-opacity: 0.028;          /* [STYLE TUNE] 降噪点强度 */
-        }
+  /* State-driven breath tokens (updated by JS) */
+  --breath: 0;              /* 0..1 sinusoidal */
+  --breath-shadow-r: 255;
+  --breath-shadow-g: 142;
+  --breath-shadow-b: 153;
+  --breath-scale: 1;
+  --breath-opacity: 1;
 
-        * { box-sizing: border-box; user-select: none; }
+  /* Transitions */
+  --t-fast: 0.18s;
+  --t-mid:  0.32s;
+  --t-slow: 0.55s;
+}
 
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: "M PLUS Rounded 1c", sans-serif;
-            color: var(--ba-text);
-            background: #fdfdfd;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            overflow-x: hidden;
-        }
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+body {
+  font-family: "M PLUS Rounded 1c", sans-serif;
+  color: var(--text);
+  background: #f0f4fa;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0 40px;
+  position: relative;
+  overflow-x: hidden;
+}
 
-        /* ─── 故障滤镜 (Global Glitch) ─── */
-        @keyframes glitch-anim-1 {
-            /* [STYLE TUNE] 减小位移量，瞬时感强、侵略性低 */
-            0%   { clip-path: inset(22% 0 78% 0); transform: translate(-1px, 0.5px); }
-            20%  { clip-path: inset(62% 0 12% 0); transform: translate(1px, -0.5px); }
-            40%  { clip-path: inset(42% 0 48% 0); transform: translate(-1px, 1px); }
-            60%  { clip-path: inset(78% 0 8%  0); transform: translate(1px, -1px); }
-            80%  { clip-path: inset(12% 0 68% 0); transform: translate(-0.5px, 0.5px); }
-            100% { clip-path: inset(32% 0 18% 0); transform: translate(0); }
-        }
+/* ── background gradient mesh ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(255,200,215,0.38) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 88% 88%, rgba(125,227,248,0.25) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255,238,240,0.5) 0%, transparent 70%),
+    linear-gradient(160deg, #eef3fa 0%, #f9f0f5 100%);
+  pointer-events: none;
+  z-index: 0;
+}
 
-        .glitch-active {
-            /* [STYLE TUNE] hue-rotate 90deg→18deg，降为温柔一瞥而非黑客崩溃 */
-            animation: glitch-anim-1 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
-            filter: hue-rotate(18deg) contrast(1.06) brightness(1.02);
-        }
+/* ═══════════════════════════════════════════════
+   SIDE STRIPS
+═══════════════════════════════════════════════ */
+.side-strip {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-lr;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--blue);
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: 0;
+  text-transform: uppercase;
+  font-family: "JetBrains Mono", monospace;
+  line-height: 1;
+}
+.side-strip-l { left: 6px; }
+.side-strip-r { right: 6px; transform: translateY(-50%) rotate(180deg); }
 
-        .glitch-active::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            /* [STYLE TUNE] 粉蓝叠加替换纯蓝，softer overlay */
-            background: linear-gradient(135deg, rgba(255,170,178,0.12) 0%, rgba(125,227,248,0.12) 100%);
-            mix-blend-mode: soft-light;
-            pointer-events: none;
-            z-index: 99;
-        }
+/* ═══════════════════════════════════════════════
+   MAIN CONTAINER
+═══════════════════════════════════════════════ */
+.terminal {
+  width: calc(100% - 24px);
+  max-width: 440px;
+  position: relative;
+  z-index: 10;
 
-        /* ─── 侧边栏垂直文字条 ─── */
-        .side-strip {
-            position: fixed;
-            top: 50%;
-            transform: translateY(-50%);
-            writing-mode: vertical-lr;
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: 3px;
-            color: var(--ba-blue-accent);
-            opacity: 0.18;                      /* [STYLE TUNE] 稍降，不抢主界面 */
-            pointer-events: none;
-            z-index: 0;
-            text-transform: uppercase;
-            font-family: "JetBrains Mono", monospace;
-        }
-        .side-strip-left { left: 8px; text-orientation: mixed; }
-        .side-strip-right { right: 8px; text-orientation: mixed; transform: translateY(-50%) rotate(180deg); }
+  background: var(--glass);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  border-radius: 22px;
+  border: 2px solid rgba(255,255,255,0.98);
+  outline: 1.5px solid rgba(255,170,178,0.28);
+  outline-offset: 3px;
 
-        /* ─── 主容器 ─── */
-        .container {
-            width: 100%;
-            max-width: 600px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(24px) saturate(130%);   /* [STYLE TUNE] 提饱和感 */
-            -webkit-backdrop-filter: blur(24px) saturate(130%);
-            border-radius: 20px;                           /* [STYLE TUNE] 圆一点，学院感 */
-            border: 2px solid rgba(255,255,255,0.97);
-            outline: 1px solid rgba(255, 170, 178, 0.35);
-            outline-offset: 3px;
-            box-shadow: var(--ba-shadow-deep);
-            position: relative;
-            overflow: visible;
-            transition: filter 0.08s;
-        }
+  /* Breathing shadow - driven by CSS var */
+  box-shadow:
+    0 0 0 calc(var(--breath) * 6px) rgba(255,170,178,0.10),
+    0 16px 48px rgba(255,130,148,0.15),
+    0 4px 16px rgba(125,227,248,0.12),
+    0 1px 3px rgba(0,0,0,0.04);
 
-        /* 战术氛围滤镜 overlay */
-        .intel-overlay {
-            position: absolute;
-            inset: 0;
-            border-radius: 20px;
-            /* [STYLE TUNE] 粉→蓝渐变替换纯蓝圆形，增甜 */
-            background: radial-gradient(ellipse at 80% 10%, rgba(255,200,210,0.07) 0%, transparent 55%),
-                        radial-gradient(circle at 20% 90%, rgba(125,227,248,0.06) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 1;
-        }
+  transform: scale(var(--breath-scale));
+  will-change: box-shadow, transform;
+  overflow: hidden;
+}
 
-        /* 噪点纹理 */
-        .container::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 18px;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-            background-size: 120px 120px;
-            opacity: var(--ba-noise-opacity);
-            pointer-events: none;
-            z-index: 0;
-            mix-blend-mode: overlay;
-        }
+/* noise texture overlay */
+.terminal::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px;
+  opacity: var(--noise);
+  pointer-events: none;
+  z-index: 100;
+  mix-blend-mode: overlay;
+}
 
-        /* 扫描线 */
-        .scanlines {
-            position: absolute;
-            inset: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 3px,
-                /* [STYLE TUNE] 降低扫描线对比度，去黑客感 */
-                rgba(106, 217, 245, 0.018) 3px,
-                rgba(106, 217, 245, 0.018) 4px
-            );
-            pointer-events: none;
-            z-index: 1;
-            border-radius: 18px;
-            animation: scanMove 16s linear infinite;       /* [STYLE TUNE] 放慢，减少视觉焦虑 */
-        }
-        @keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 100%; } }
+/* scanlines */
+.terminal::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: 20px;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(106,217,245,0.015) 3px,
+    rgba(106,217,245,0.015) 4px
+  );
+  animation: scanMove 20s linear infinite;
+  pointer-events: none;
+  z-index: 99;
+}
+@keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 200px; } }
 
-        /* ─── 头部区域 ─── */
-        .header {
-            padding: 24px 24px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: relative;
-            z-index: 5;
-        }
+/* ── LOADING dim state ── */
+.terminal.state-loading {
+  filter: brightness(0.92) saturate(0.85);
+  transition: filter var(--t-slow) ease;
+}
+.terminal.state-standby {
+  filter: brightness(0.97) saturate(0.9);
+  transition: filter var(--t-slow) ease;
+}
+.terminal.state-idle,
+.terminal.state-speaking,
+.terminal.state-processing {
+  filter: brightness(1) saturate(1);
+  transition: filter var(--t-mid) ease;
+}
 
-        .title-group h1 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--ba-text);
-            font-style: italic;
-            text-shadow: 2px 2px 0px rgba(255,255,255,0.9);
-            letter-spacing: 1px;
-        }
-        .title-group .sub-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ba-pink);
-            letter-spacing: 2.5px;
-            margin-top: 5px;
-            text-transform: uppercase;
-            font-family: "JetBrains Mono", monospace;
-        }
+/* ═══════════════════════════════════════════════
+   STATE BADGE
+═══════════════════════════════════════════════ */
+.state-badge {
+  position: absolute;
+  top: 14px; right: 14px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 100px;
+  z-index: 200;
+  transition: background var(--t-mid), color var(--t-mid), opacity var(--t-mid);
+}
+.state-badge.idle     { background: rgba(125,227,248,0.18); color: var(--blue-deep); }
+.state-badge.loading  { background: rgba(255,200,100,0.2);  color: #c87800; }
+.state-badge.speaking { background: rgba(255,170,178,0.25); color: var(--pink-dark); }
+.state-badge.processing { background: rgba(96,212,200,0.2); color: var(--teal); }
+.state-badge.standby  { background: rgba(186,200,216,0.2);  color: var(--text-light); }
 
-        /* 日期胶囊 */
-        .date-capsule {
-            background: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(255,238,240,0.92) 100%);
-            padding: 6px 16px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--ba-pink-dark);
-            border: 1.5px solid rgba(255,170,178,0.45);
-            box-shadow: 0 3px 10px rgba(255,142,153,0.12);
-            font-family: "JetBrains Mono", monospace;
-        }
+/* ═══════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════ */
+.header {
+  padding: 22px 20px 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  z-index: 10;
+}
 
-        /* ─── 语录框 (Intel Decoder) ─── */
-        .weiyu-wrapper {
-            padding: 5px 24px;
-            position: relative;
-            z-index: 5;
-        }
-        .weiyu-card {
-            background: rgba(255,255,255,0.82);
-            border-left: 4px solid var(--ba-pink);
-            border-radius: 4px 12px 12px 4px;
-            padding: 14px 16px;
-            position: relative;
-            /* [STYLE TUNE] 粉色阴影更温柔 */
-            box-shadow: 0 2px 14px rgba(255,170,178,0.1), 0 1px 4px rgba(125,227,248,0.06);
-            min-height: 60px;
-            transition: box-shadow 0.4s ease;
-        }
-        /* [STYLE TUNE] idle 时的轻触发光 */
-        .weiyu-card.idle-nudge {
-            box-shadow: 0 2px 20px rgba(255,170,178,0.28), 0 1px 8px rgba(125,227,248,0.14);
-        }
-        .weiyu-label {
-            position: absolute;
-            top: -9px; left: 10px;
-            background: var(--ba-pink);
-            color: white;
-            font-size: 9px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-family: "JetBrains Mono", monospace;
-        }
-        #weiyu-text {
-            margin: 0;
-            font-size: 14px;
-            line-height: 1.6;
-            color: var(--ba-text);
-            font-weight: 500;
-        }
-        .decrypt-char {
-            /* [STYLE TUNE] 用粉蓝交替更活泼 */
-            color: var(--ba-blue-accent);
-            font-family: "JetBrains Mono", monospace;
-            font-weight: bold;
-        }
+.title-block h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  font-style: italic;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  text-shadow: 2px 2px 0 rgba(255,255,255,0.95);
+  line-height: 1.1;
+}
+.title-block .sub {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: var(--pink-dark);
+  text-transform: uppercase;
+  margin-top: 5px;
+  opacity: 0.85;
+}
 
-        /* ─── 战术音频播放器 (Voice Intelligence) ─── */
-        .audio-wrapper {
-            padding: 10px 24px;
-            position: relative;
-            z-index: 5;
-            display: none;
-        }
-        .custom-player {
-            /* [STYLE TUNE] 从纯黑→深蓝紫，保持战术感但不那么黑客 */
-            background: linear-gradient(135deg, #1f2c42 0%, #17223a 100%);
-            border-radius: 16px;
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            /* [STYLE TUNE] 粉蓝双色描边，微弱光晕 */
-            border: 1px solid rgba(125, 227, 248, 0.25);
-            box-shadow: 0 8px 28px rgba(15, 25, 40, 0.18), inset 0 1px 0 rgba(125,227,248,0.08);
-            position: relative;
-            overflow: hidden;
-        }
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  padding-right: 4px; /* account for badge */
+}
 
-        /* 播放器内部网格背景 */
-        .custom-player::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(125, 227, 248, 0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(125, 227, 248, 0.04) 1px, transparent 1px);
-            background-size: 10px 10px;
-            pointer-events: none;
-        }
+.date-pill {
+  background: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(255,238,240,0.9) 100%);
+  padding: 5px 13px;
+  border-radius: 100px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pink-dark);
+  border: 1.5px solid rgba(255,170,178,0.4);
+  box-shadow: 0 2px 8px rgba(255,142,153,0.1);
+  white-space: nowrap;
+}
 
-        /* [STYLE TUNE] 播放器右上角粉色光晕 */
-        .custom-player::after {
-            content: '';
-            position: absolute;
-            top: -10px; right: -10px;
-            width: 80px; height: 80px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,170,178,0.12) 0%, transparent 70%);
-            pointer-events: none;
-        }
+/* ── signal meter ── */
+.signal-meter {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 14px;
+}
+.signal-bar {
+  width: 3px;
+  background: var(--text-faint);
+  border-radius: 2px;
+  transition: background var(--t-fast), height var(--t-fast);
+}
+.signal-bar:nth-child(1) { height: 30%; }
+.signal-bar:nth-child(2) { height: 55%; }
+.signal-bar:nth-child(3) { height: 75%; }
+.signal-bar:nth-child(4) { height: 90%; }
+.signal-bar:nth-child(5) { height: 100%; }
+.signal-bar.active { background: var(--blue-deep); }
+.signal-bar.processing-pulse {
+  background: var(--teal);
+  transition: background 0.1s, height 0.1s;
+}
 
-        /* Arona-style 呼吸球 (声纹核心) */
-        .voice-core {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            /* [STYLE TUNE] 内部高光更亮更甜 */
-            background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.95) 0%, var(--ba-blue-accent) 38%, rgba(90,176,232,0.4) 80%, transparent 100%);
-            position: relative;
-            flex-shrink: 0;
-            box-shadow: 0 0 12px var(--ba-blue-accent), 0 0 24px rgba(125,227,248,0.3);
-            transform: scale(0.85);
-            /* [STYLE TUNE] spring easing 替换 linear，呼吸更灵动 */
-            transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.28s ease, box-shadow 0.28s ease;
-            opacity: 0.7;
-        }
-        .voice-core::after {
-            content: '';
-            position: absolute;
-            top: -3px; left: -3px; right: -3px; bottom: -3px;
-            border-radius: 50%;
-            /* [STYLE TUNE] dashed→solid 细圆环，更精致；14s 慢转，不焦虑 */
-            border: 1px solid rgba(125, 227, 248, 0.45);
-            animation: spin 14s linear infinite;
-        }
-        /* [STYLE TUNE] 第二个外光环，idle 时可见 */
-        .voice-core::before {
-            content: '';
-            position: absolute;
-            top: -6px; left: -6px; right: -6px; bottom: -6px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 170, 178, 0.2);
-            animation: spin 22s linear infinite reverse;
-        }
+/* ═══════════════════════════════════════════════
+   WEIYU CARD (Intel Decoder)
+═══════════════════════════════════════════════ */
+.weiyu-wrap {
+  padding: 4px 18px 12px;
+  position: relative;
+  z-index: 10;
+}
+.weiyu-card {
+  background: var(--glass-inner);
+  border-left: 3.5px solid var(--pink);
+  border-radius: 4px 14px 14px 4px;
+  padding: 14px 15px 13px;
+  position: relative;
+  box-shadow: 0 2px 12px rgba(255,170,178,0.1), 0 1px 4px rgba(125,227,248,0.05);
+  transition: box-shadow var(--t-mid), border-color var(--t-mid);
+  min-height: 58px;
+}
+.weiyu-card.speaking {
+  border-color: var(--pink-dark);
+  box-shadow: 0 2px 22px rgba(255,142,153,0.22), 0 1px 8px rgba(125,227,248,0.1);
+}
+.weiyu-card.idle-nudge {
+  box-shadow: 0 2px 24px rgba(255,170,178,0.3), 0 1px 10px rgba(125,227,248,0.15);
+}
+.weiyu-label {
+  position: absolute;
+  top: -9px; left: 10px;
+  background: var(--pink);
+  color: white;
+  font-size: 8px;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: "JetBrains Mono", monospace;
+  transition: background var(--t-mid), box-shadow var(--t-mid);
+}
+.weiyu-label.speaking {
+  background: var(--pink-dark);
+  box-shadow: 0 0 10px rgba(255,142,153,0.45);
+}
+.weiyu-label.idle-badge {
+  box-shadow: 0 0 10px rgba(255,170,178,0.6);
+}
+.weiyu-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+  margin: 0;
+  min-height: 24px;
+}
+.weiyu-cursor {
+  display: inline-block;
+  width: 1.5px;
+  height: 14px;
+  background: var(--pink-dark);
+  margin-left: 1px;
+  vertical-align: middle;
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
 
-        /* idle 时 voice-core 轻触动效 */
-        @keyframes idle-pulse {
-            0%   { transform: scale(0.85); box-shadow: 0 0 12px var(--ba-blue-accent), 0 0 24px rgba(125,227,248,0.3); }
-            40%  { transform: scale(1.05); box-shadow: 0 0 18px var(--ba-blue-accent), 0 0 36px rgba(125,227,248,0.45); }
-            100% { transform: scale(0.85); box-shadow: 0 0 12px var(--ba-blue-accent), 0 0 24px rgba(125,227,248,0.3); }
-        }
-        /* [STYLE TUNE] idle 脉冲 class，由 JS 添加/移除 */
-        .voice-core.idle-pulse-anim {
-            animation: idle-pulse 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 1;
-        }
+/* ═══════════════════════════════════════════════
+   VOICE CORE + PLAYER
+═══════════════════════════════════════════════ */
+.player-section {
+  padding: 4px 18px 14px;
+  position: relative;
+  z-index: 10;
+}
+.player-card {
+  background: linear-gradient(135deg,
+    rgba(255,238,240,0.75) 0%,
+    rgba(235,246,255,0.75) 100%
+  );
+  border: 1.5px solid rgba(255,200,210,0.45);
+  border-radius: 16px;
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(255,170,178,0.08);
+}
+.player-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.5) 0%,
+    rgba(125,227,248,0.05) 100%
+  );
+  pointer-events: none;
+}
 
-        /* 播放控制按钮 */
-        .player-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 2;
-        }
-        .player-btn {
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            border: none;
-            background: #fff;
-            color: var(--ba-text);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            /* [STYLE TUNE] 弹性过渡 */
-            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, box-shadow 0.2s;
-            box-shadow: 0 0 8px rgba(255,255,255,0.25);
-        }
-        .player-btn:hover {
-            transform: scale(1.12);
-            background: var(--ba-blue-accent);
-            color: white;
-            box-shadow: 0 0 14px rgba(125,227,248,0.5);
-        }
-        .player-btn:active { transform: scale(0.92); }
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
 
-        /* 真实频谱 */
-        .spectrum-container {
-            display: flex;
-            align-items: flex-end;
-            gap: 3px;
-            height: 24px;
-            flex: 0 0 auto;
-            z-index: 2;
-            padding-bottom: 2px;
-        }
-        .spectrum-bar {
-            width: 4px;
-            /* [STYLE TUNE] 粉→蓝渐变频谱，更有层次 */
-            background: linear-gradient(to top, var(--ba-pink), var(--ba-blue-accent));
-            border-radius: 2px;
-            height: 3px;
-            transition: height 0.06s ease;
-            box-shadow: 0 0 4px rgba(125, 227, 248, 0.45);
-        }
+/* Voice Core */
+.voice-core-wrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px; height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* halo rings - breathing */
+.core-halo {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,170,178,0.3);
+  animation: none;
+  transition: opacity var(--t-mid), transform var(--t-mid);
+}
+.halo-1 { width: 52px; height: 52px; }
+.halo-2 { width: 64px; height: 64px; border-color: rgba(125,227,248,0.2); }
+.halo-3 { width: 76px; height: 76px; border-color: rgba(255,170,178,0.12); }
 
-        /* 进度信息 */
-        .player-info {
-            flex: 1;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .player-status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 4px;
-        }
-        .player-label {
-            font-size: 9px;
-            color: var(--ba-blue-accent);
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-        /* REC 录制灯 */
-        .rec-indicator {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 9px;
-            color: #ff8fa0;                    /* [STYLE TUNE] 红→粉，柔化 */
-            font-weight: 800;
-            opacity: 0.5;
-            transition: opacity 0.3s;
-        }
-        .rec-dot {
-            width: 6px; height: 6px;
-            background: #ff8fa0;              /* [STYLE TUNE] */
-            border-radius: 50%;
-        }
-        .rec-active { opacity: 1; }
-        .rec-active .rec-dot { animation: blink 1.2s steps(2, start) infinite; } /* [STYLE TUNE] 1s→1.2s，不急促 */
+/* speaking: halos animate outward */
+.speaking .halo-1 { animation: halo-pulse 1.4s ease-out infinite; }
+.speaking .halo-2 { animation: halo-pulse 1.4s ease-out infinite 0.3s; }
+.speaking .halo-3 { animation: halo-pulse 1.4s ease-out infinite 0.6s; }
+.processing .halo-1 { animation: halo-scan 1.2s ease-in-out infinite; }
+.processing .halo-2 { animation: halo-scan 1.2s ease-in-out infinite 0.2s; }
 
-        @keyframes blink { to { visibility: hidden; } }
+@keyframes halo-pulse {
+  0%   { transform: scale(1); opacity: 0.6; }
+  60%  { transform: scale(1.25); opacity: 0.15; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+@keyframes halo-scan {
+  0%, 100% { border-color: rgba(125,227,248,0.25); }
+  50%       { border-color: rgba(96,212,200,0.55); }
+}
 
-        .progress-track {
-            height: 3px;
-            background: rgba(255,255,255,0.08);
-            border-radius: 2px;
-            overflow: hidden;
-            position: relative;
-        }
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            /* [STYLE TUNE] 粉→蓝渐变进度条 */
-            background: linear-gradient(90deg, var(--ba-pink) 0%, var(--ba-blue-accent) 100%);
-            box-shadow: 0 0 6px var(--ba-blue-accent);
-            transition: width 0.3s ease;
-        }
+.voice-core {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink-light) 0%, rgba(220,244,255,0.9) 100%);
+  border: 2px solid rgba(255,255,255,0.9);
+  box-shadow:
+    0 0 0 2px rgba(255,170,178,0.2),
+    0 4px 12px rgba(255,142,153,0.18),
+    inset 0 1px 2px rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  transition: box-shadow var(--t-mid), background var(--t-mid);
+  cursor: pointer;
+}
+.voice-core.speaking {
+  background: linear-gradient(135deg, rgba(255,200,210,0.95) 0%, rgba(200,240,255,0.9) 100%);
+  box-shadow:
+    0 0 0 3px rgba(255,170,178,0.35),
+    0 0 20px rgba(255,142,153,0.3),
+    0 4px 14px rgba(255,142,153,0.2),
+    inset 0 1px 2px rgba(255,255,255,0.9);
+}
+.voice-core.processing {
+  box-shadow:
+    0 0 0 2px rgba(96,212,200,0.35),
+    0 0 16px rgba(96,212,200,0.25),
+    0 4px 12px rgba(125,227,248,0.2),
+    inset 0 1px 2px rgba(255,255,255,0.9);
+}
+.voice-core.idle-pulse-anim {
+  animation: idle-core-pulse 0.9s ease-out;
+}
+@keyframes idle-core-pulse {
+  0%   { box-shadow: 0 0 0 2px rgba(255,170,178,0.2), 0 4px 12px rgba(255,142,153,0.18), inset 0 1px 2px rgba(255,255,255,0.9); }
+  40%  { box-shadow: 0 0 0 6px rgba(255,170,178,0.22), 0 0 24px rgba(255,142,153,0.32), inset 0 1px 2px rgba(255,255,255,0.9); }
+  100% { box-shadow: 0 0 0 2px rgba(255,170,178,0.2), 0 4px 12px rgba(255,142,153,0.18), inset 0 1px 2px rgba(255,255,255,0.9); }
+}
 
-        /* ─── 新闻列表 (Processing Unit) ─── */
-        .news-section {
-            padding: 10px 24px 30px;
-            position: relative;
-            z-index: 5;
-        }
-        .section-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 16px;
-            border-bottom: 1px solid rgba(76, 91, 112, 0.08);
-            padding-bottom: 8px;
-        }
-        .section-title {
-            font-size: 14px;
-            font-weight: 800;
-            color: var(--ba-text);
-            letter-spacing: 1px;
-            margin-right: auto;
-        }
+/* play/pause icon */
+.play-icon { width: 18px; height: 18px; fill: var(--pink-dark); transition: fill var(--t-fast); }
+.pause-icon { width: 18px; height: 18px; fill: var(--pink-dark); display: none; }
 
-        /* 信号强度模拟 */
-        .signal-meter {
-            display: flex;
-            align-items: flex-end;
-            gap: 2px;
-            height: 12px;
-        }
-        .signal-bar {
-            width: 3px;
-            background: var(--ba-text-light);
-            opacity: 0.25;
-            border-radius: 1px;
-            transition: opacity 0.4s ease, background 0.4s ease;  /* [STYLE TUNE] 柔化切换 */
-        }
-        .signal-bar.active { background: var(--ba-blue-accent); opacity: 1; }
+/* Player right side */
+.player-meta { flex: 1; min-width: 0; }
+.player-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.player-status {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--text-light);
+  transition: color var(--t-mid);
+}
+.player-status.speaking { color: var(--pink-dark); }
+.player-status.processing { color: var(--teal); }
 
-        .news-list { list-style: none; padding: 0; margin: 0; }
-        .news-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 10px;
-            background: rgba(255,255,255,0.58);
-            border: 1px solid transparent;
-            border-radius: 10px;
-            padding: 12px;
-            /* [STYLE TUNE] 弹性过渡 */
-            transition: all 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
-            position: relative;
-        }
+/* progress bar */
+.progress-track {
+  margin-top: 10px;
+  height: 3px;
+  background: rgba(186,200,216,0.35);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--pink) 0%, var(--blue) 100%);
+  border-radius: 100px;
+  transition: width 0.5s linear;
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 5px; height: 5px;
+  background: var(--pink-dark);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255,142,153,0.6);
+  opacity: 0;
+  transition: opacity var(--t-fast);
+}
+.progress-fill.active::after { opacity: 1; }
 
-        .news-item:hover {
-            background: rgba(255,255,255,0.92);
-            /* [STYLE TUNE] 向右弹性滑动 */
-            transform: translateX(5px);
-            box-shadow: 0 4px 14px rgba(255,170,178,0.1), 0 1px 4px rgba(125,227,248,0.08);
-            border-color: rgba(255,170,178,0.18);
-        }
+/* time display */
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  color: var(--text-faint);
+}
 
-        /* 正在处理/播报中的新闻高亮 */
-        .news-item.processing {
-            /* [STYLE TUNE] 粉蓝渐变替换纯蓝 */
-            background: linear-gradient(90deg, rgba(125,227,248,0.08) 0%, rgba(255,170,178,0.05) 50%, rgba(255,255,255,0.8) 100%);
-            border-color: rgba(125, 227, 248, 0.4);
-            box-shadow: 0 0 12px rgba(125, 227, 248, 0.12);
-        }
-        .news-item.processing::before {
-            content: '';
-            position: absolute;
-            left: 0; top: 10%; bottom: 10%;
-            width: 3px;
-            /* [STYLE TUNE] 粉→蓝渐变光条 */
-            background: linear-gradient(to bottom, var(--ba-pink), var(--ba-blue-accent));
-            border-radius: 0 2px 2px 0;
-            animation: blink 1.2s infinite;
-        }
+/* ═══════════════════════════════════════════════
+   SECTION DIVIDER
+═══════════════════════════════════════════════ */
+.section-head {
+  padding: 4px 18px 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 10;
+}
+.section-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(186,200,216,0.4) 0%, transparent 100%);
+}
+.section-count {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--pink);
+  background: rgba(255,170,178,0.12);
+  padding: 2px 7px;
+  border-radius: 100px;
+}
 
-        .news-index {
-            flex-shrink: 0;
-            font-family: "JetBrains Mono", monospace;
-            font-weight: 800;
-            font-size: 14px;
-            color: var(--ba-pink-dark);
-            width: 28px;
-            opacity: 0.75;
-        }
-        .news-content {
-            font-size: 13.5px;
-            line-height: 1.6;
-            color: var(--ba-text);
-            font-weight: 500;
-        }
+/* ═══════════════════════════════════════════════
+   NEWS LIST
+═══════════════════════════════════════════════ */
+.news-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 18px 20px;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
 
-        /* Loading */
-        #loading-screen {
-            padding: 60px 0;
-            text-align: center;
-        }
-        .spinner {
-            width: 40px; height: 40px;
-            border: 3px solid var(--ba-pink-light);
-            border-top-color: var(--ba-pink);
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            animation: spin 0.9s infinite cubic-bezier(0.5, 0.1, 0.5, 0.9); /* [STYLE TUNE] 非匀速，更生动 */
-        }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+.news-item {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  background: var(--glass-inner);
+  border: 1.5px solid rgba(255,255,255,0.9);
+  border-radius: 12px;
+  padding: 11px 13px;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--t-fast) cubic-bezier(0.34,1.56,0.64,1),
+    box-shadow var(--t-fast),
+    border-color var(--t-mid);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.03), 0 0 0 0 rgba(255,170,178,0);
+  will-change: transform;
+}
 
-        /* 底部 */
-        .footer {
-            text-align: center;
-            font-size: 10px;
-            color: var(--ba-text-light);
-            opacity: 0.5;
-            padding-bottom: 12px;
-            font-family: "JetBrains Mono", monospace;
-            margin-top: 20px;
-        }
+/* scanning highlight overlay */
+.news-item::before {
+  content: '';
+  position: absolute;
+  left: -100%; top: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(125,227,248,0.12) 40%,
+    rgba(96,212,200,0.1) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--t-mid);
+}
+/* scan accent bar */
+.news-item::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0;
+  width: 3px; height: 100%;
+  background: transparent;
+  border-radius: 2px 0 0 2px;
+  transition: background var(--t-mid);
+}
 
-        /* 隐藏原生Audio */
-        audio { display: none; }
+/* processing state for individual news items */
+.news-item.processing-scan::before {
+  animation: scan-sweep 1.4s ease-in-out;
+}
+.news-item.processing-scan::after {
+  background: var(--teal);
+}
+.news-item.processing-scan {
+  border-color: rgba(96,212,200,0.3);
+  box-shadow: 0 1px 12px rgba(96,212,200,0.12), 0 0 0 0 rgba(255,170,178,0);
+}
 
-        /* [STYLE TUNE] MOMOTALK idle 提示角标 */
-        .weiyu-label {
-            position: absolute;
-            top: -9px; left: 10px;
-            background: var(--ba-pink);
-            color: white;
-            font-size: 9px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-family: "JetBrains Mono", monospace;
-            transition: box-shadow 0.4s ease;
-        }
-        .weiyu-label.idle-badge {
-            box-shadow: 0 0 0 3px rgba(255,170,178,0.35), 0 0 10px rgba(255,170,178,0.4);
-        }
-    </style>
+@keyframes scan-sweep {
+  0%   { left: -100%; opacity: 1; }
+  100% { left: 100%; opacity: 0.3; }
+}
+
+/* touch press states */
+.news-item:active,
+.news-item.pressed {
+  transform: scale(0.975);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.news-item.released {
+  transform: scale(1.008);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+.news-index {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--pink);
+  min-width: 20px;
+  padding-top: 1px;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+.news-content {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text);
+  flex: 1;
+}
+
+/* category tag */
+.news-tag {
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 100px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.tag-tech    { background: rgba(125,227,248,0.18); color: var(--blue-deep); }
+.tag-world   { background: rgba(96,212,200,0.15);  color: #2ba89e; }
+.tag-finance { background: rgba(255,200,100,0.18); color: #c87800; }
+.tag-sci     { background: rgba(180,160,255,0.18); color: #7050d0; }
+.tag-health  { background: rgba(255,170,178,0.2);  color: var(--pink-dark); }
+
+/* ═══════════════════════════════════════════════
+   FOOTER NAV BAR
+═══════════════════════════════════════════════ */
+.footer-nav {
+  padding: 10px 18px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(186,200,216,0.2);
+  position: relative;
+  z-index: 10;
+}
+
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: transform var(--t-fast) cubic-bezier(0.34,1.56,0.64,1), opacity var(--t-fast);
+  padding: 4px 8px;
+  border-radius: 10px;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-btn:active, .nav-btn.pressed {
+  transform: scale(0.9);
+  opacity: 0.75;
+}
+.nav-btn.released {
+  transform: scale(1.05);
+  transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+}
+.nav-icon {
+  width: 22px; height: 22px;
+  fill: var(--text-faint);
+  transition: fill var(--t-fast);
+}
+.nav-btn.active .nav-icon { fill: var(--pink-dark); }
+.nav-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  transition: color var(--t-fast);
+}
+.nav-btn.active .nav-label { color: var(--pink-dark); }
+
+/* ── nav active pip ── */
+.nav-btn.active {
+  position: relative;
+}
+.nav-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  background: var(--pink);
+  border-radius: 50%;
+}
+
+/* ═══════════════════════════════════════════════
+   LOADING SCREEN
+═══════════════════════════════════════════════ */
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  gap: 16px;
+  transition: opacity 0.5s ease;
+}
+.loading-screen.done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.load-ring-wrap {
+  position: relative;
+  width: 54px; height: 54px;
+}
+.load-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  border-top-color: var(--pink);
+  animation: spin 1s linear infinite;
+}
+.load-ring-2 {
+  inset: 6px;
+  border-top-color: var(--blue);
+  animation: spin 1.4s linear infinite reverse;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.load-center {
+  position: absolute;
+  inset: 14px;
+  background: linear-gradient(135deg, var(--pink-light) 0%, rgba(220,244,255,0.9) 100%);
+  border-radius: 50%;
+}
+
+.load-text {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+.load-dots::after {
+  content: '';
+  animation: dots 1.2s steps(4, end) infinite;
+}
+@keyframes dots {
+  0%  { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* ═══════════════════════════════════════════════
+   GLITCH EFFECT
+═══════════════════════════════════════════════ */
+.glitch-active {
+  animation: glitch 0.14s cubic-bezier(0.25,0.46,0.45,0.94);
+  filter: hue-rotate(12deg) contrast(1.05);
+}
+@keyframes glitch {
+  0%   { clip-path: inset(20% 0 78% 0); transform: translate(-1px, 0.5px) scale(var(--breath-scale)); }
+  25%  { clip-path: inset(60% 0 14% 0); transform: translate(1px, -0.5px) scale(var(--breath-scale)); }
+  50%  { clip-path: inset(40% 0 50% 0); transform: translate(-1px, 1px) scale(var(--breath-scale)); }
+  75%  { clip-path: inset(75% 0 10% 0); transform: translate(0.5px, -0.5px) scale(var(--breath-scale)); }
+  100% { clip-path: inset(0 0 0 0);     transform: translate(0) scale(var(--breath-scale)); }
+}
+
+/* ═══════════════════════════════════════════════
+   REVEAL ANIMATION
+═══════════════════════════════════════════════ */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.reveal-item.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════
+   TOUCH RIPPLE HELPER
+═══════════════════════════════════════════════ */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,170,178,0.2);
+  transform: scale(0);
+  animation: ripple-anim 0.35s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ripple-anim {
+  to { transform: scale(2.5); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════
+   CLOCK AREA
+═══════════════════════════════════════════════ */
+.clock-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px 10px;
+  position: relative;
+  z-index: 10;
+}
+.clock-time {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-light);
+  letter-spacing: 1.5px;
+}
+.clock-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+  opacity: 0.7;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.clock-sep {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(186,200,216,0.3) 0%, transparent 100%);
+}
+.online-badge {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--teal);
+  background: rgba(96,212,200,0.1);
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+</style>
 </head>
 <body>
 
-    <div class="side-strip side-strip-left">SYSTEM ID: ARONA // SYNC RATE: 100%</div>
-    <div class="side-strip side-strip-right">SCHALE OFFICE // ENCRYPTED CONNECTION</div>
+<!-- Side strips -->
+<div class="side-strip side-strip-l">SCHALE INTEL · TACTICAL BRIEF · KIVOTOS</div>
+<div class="side-strip side-strip-r">AUTHORIZED · SENSEI ONLY · CONFIDENTIAL</div>
 
-    <div class="container" id="terminal-container">
-        <div class="intel-overlay"></div>
-        <div class="scanlines"></div>
+<!-- Main Terminal -->
+<div class="terminal state-loading" id="terminal">
 
-        <div class="header">
-            <div class="title-group">
-                <h1>DAILY NEWS</h1>
-                <div class="sub-title">Intelligence Report // <span id="clock-time">00:00</span></div>
-            </div>
-            <div class="date-capsule" id="date-display">LOADING...</div>
-        </div>
+  <!-- Scanning lines & noise via ::before ::after -->
 
-        <div id="loading-screen">
-            <div class="spinner"></div>
-            <div style="font-size:12px; letter-spacing:1px; color:var(--ba-pink);">DECRYPTING DATA...</div>
-        </div>
-
-        <div id="main-content" style="display: none;">
-
-            <div class="weiyu-wrapper">
-                <div class="weiyu-card" id="weiyu-card">
-                    <div class="weiyu-label" id="momotalk-label">MOMOTALK</div>
-                    <p id="weiyu-text"></p>
-                </div>
-            </div>
-
-            <div class="audio-wrapper" id="audio-wrapper">
-                <div class="custom-player">
-                    <div class="voice-core" id="voice-core"></div>
-
-                    <button class="player-btn" id="play-btn">
-                        <svg id="icon-play" width="12" height="14" viewBox="0 0 12 14" fill="currentColor"><path d="M0 0L12 7L0 14Z"/></svg>
-                        <svg id="icon-pause" width="12" height="14" viewBox="0 0 12 14" fill="currentColor" style="display:none"><path d="M0 0H4V14H0ZM8 0H12V14H8Z"/></svg>
-                    </button>
-
-                    <div class="player-info">
-                        <div class="player-status-row">
-                            <span class="player-label">VOICE_DATA.mp3</span>
-                            <div class="rec-indicator" id="rec-light">
-                                <div class="rec-dot"></div> REC
-                            </div>
-                        </div>
-                        <div class="progress-track">
-                            <div class="progress-fill" id="progress-fill"></div>
-                        </div>
-                    </div>
-
-                    <div class="spectrum-container" id="spectrum-box">
-                        <div class="spectrum-bar"></div>
-                        <div class="spectrum-bar"></div>
-                        <div class="spectrum-bar"></div>
-                        <div class="spectrum-bar"></div>
-                        <div class="spectrum-bar"></div>
-                    </div>
-                </div>
-                <audio id="audio-source" crossorigin="anonymous"></audio>
-            </div>
-
-            <div class="news-section">
-                <div class="section-header">
-                    <span class="section-title">INTELLIGENCE FEED</span>
-                    <div class="signal-meter" id="signal-meter">
-                        <div class="signal-bar active" style="height: 4px"></div>
-                        <div class="signal-bar active" style="height: 6px"></div>
-                        <div class="signal-bar active" style="height: 8px"></div>
-                        <div class="signal-bar" style="height: 10px"></div>
-                    </div>
-                </div>
-                <ul class="news-list" id="news-list"></ul>
-            </div>
-
-            <div class="footer">
-                TERMINAL VER 3.0.1 // AUTHORIZED BY SENSEI
-            </div>
-        </div>
+  <!-- Loading screen -->
+  <div class="loading-screen" id="loading-screen">
+    <div class="load-ring-wrap">
+      <div class="load-ring"></div>
+      <div class="load-ring load-ring-2"></div>
+      <div class="load-center"></div>
     </div>
+    <div class="load-text">INTEL DECODE<span class="load-dots"></span></div>
+  </div>
+
+  <!-- State badge -->
+  <div class="state-badge idle" id="state-badge">IDLE</div>
+
+  <!-- ── HEADER ── -->
+  <div class="header reveal-item">
+    <div class="title-block">
+      <h1>早報</h1>
+      <div class="sub">Schale Intelligence · Daily Brief</div>
+    </div>
+    <div class="header-right">
+      <div class="date-pill" id="date-display">Loading…</div>
+      <div class="signal-meter" id="signal-meter">
+        <div class="signal-bar"></div>
+        <div class="signal-bar active"></div>
+        <div class="signal-bar active"></div>
+        <div class="signal-bar active"></div>
+        <div class="signal-bar active"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CLOCK ROW ── -->
+  <div class="clock-row reveal-item" style="transition-delay:0.05s">
+    <div class="clock-time" id="clock-time">00:00</div>
+    <div class="clock-dot"></div>
+    <div class="clock-sep"></div>
+    <div class="online-badge">ONLINE</div>
+  </div>
+
+  <!-- ── WEIYU / INTEL DECODER ── -->
+  <div class="weiyu-wrap reveal-item" style="transition-delay:0.1s">
+    <div class="weiyu-card" id="weiyu-card">
+      <div class="weiyu-label" id="weiyu-label">MomoTalk · AI</div>
+      <p class="weiyu-text" id="weiyu-text"><span class="weiyu-cursor"></span></p>
+    </div>
+  </div>
+
+  <!-- ── VOICE PLAYER ── -->
+  <div class="player-section reveal-item" style="transition-delay:0.15s" id="audio-wrapper">
+    <div class="player-card">
+      <div class="player-row">
+        <div class="voice-core-wrap">
+          <div class="halo-3 core-halo"></div>
+          <div class="halo-2 core-halo"></div>
+          <div class="halo-1 core-halo"></div>
+          <div class="voice-core" id="voice-core" role="button" aria-label="Play / Pause">
+            <svg class="play-icon" id="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="pause-icon" id="pause-icon" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </div>
+        </div>
+        <div class="player-meta">
+          <div class="player-title">Schale 战术早报 · 情报播报</div>
+          <div class="player-status" id="player-status">READY</div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="time-row">
+            <span id="time-current">0:00</span>
+            <span id="time-total">0:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NEWS LIST ── -->
+  <div class="section-head reveal-item" style="transition-delay:0.2s">
+    <div class="section-label">Intelligence Report</div>
+    <div class="section-line"></div>
+    <div class="section-count" id="news-count">·/·</div>
+  </div>
+
+  <ul class="news-list reveal-item" id="news-list" style="transition-delay:0.25s"></ul>
+
+  <!-- ── FOOTER NAV ── -->
+  <div class="footer-nav reveal-item" style="transition-delay:0.3s">
+    <div class="nav-btn active" id="nav-home">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <div class="nav-label">早報</div>
+    </div>
+    <div class="nav-btn" id="nav-intel">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      <div class="nav-label">情報</div>
+    </div>
+    <div class="nav-btn" id="nav-archive">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.09 15.91 0 13.36 0c-1.3 0-2.51.52-3.36 1.36L9 2.36 7.99 1.35C7.14.51 5.94 0 4.64 0 2.09 0 0 2.09 0 4.64c0 .48.1.92.18 1.36H0v2h20V6zm-7.82-4c.66 0 1.29.26 1.76.73l.73.73H10.34l.72-.72C11.53 2.26 12.16 2 12.18 2zM4 8v13h16V8H4zm8 9l-4-4h2.5v-4h3v4H16l-4 4z"/></svg>
+      <div class="nav-label">歸檔</div>
+    </div>
+    <div class="nav-btn" id="nav-settings">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.6-.22l-2.39.96a7.15 7.15 0 00-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 00-.6.22L2.74 8.87a.478.478 0 00.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.48.48 0 00-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      <div class="nav-label">設定</div>
+    </div>
+  </div>
+
+</div><!-- .terminal -->
+
+<!-- Hidden audio element -->
+<audio id="audio-source" preload="metadata" crossorigin="anonymous"></audio>
 
 <script>
-    const CONFIG = {
-        api: './data.json',
-        cacheKey: 'schale_intel_cache',
-        glitchDuration: 180  // [STYLE TUNE] 300→180ms，更瞬时，不拖沓
-    };
+/* ═══════════════════════════════════════════════════════════
+   SCHALE INTELLIGENCE TERMINAL v2
+   State Machine: IDLE | LOADING | SPEAKING | PROCESSING | STANDBY
+   "有生命的 UI" — 状态驱动的生命感系统
+═══════════════════════════════════════════════════════════ */
 
-    // ─── 1. 核心状态机 ───
-    const State = {
-        audioCtx: null,
-        analyser: null,
-        dataArray: null,
-        source: null,
-        isPlaying: false,
-        newsData: [],
-        rafId: null,
-        typeWriterGen: 0
-    };
+/* ── CONFIG ── */
+const CONFIG = {
+  api: '/api/morning',
+  cacheKey: 'schale_intel_v2',
+  standbyDelay: 60000,   // 60s without interaction → STANDBY
+  idleNudgeMin: 40000,   // 40s
+  idleNudgeMax: 90000,   // 90s
+};
 
-    // ─── 2. Web Audio 初始化 (Lazily Loaded) ───
-    function initAudioSystem() {
-        if (State.audioCtx !== null) return;
+/* ── DEMO DATA (fallback when no API) ── */
+const DEMO = {
+  date: new Date().toLocaleDateString('zh-CN', { month:'long', day:'numeric', weekday:'short' }),
+  weiyu: '早上好，老师。今天的情报已就绪，请查阅。基沃托斯目前状态稳定，Schale 持续监测中。',
+  audio: null,
+  news: [
+    { text: '全球 AI 研究机构联合发布新一代多模态基准测试，涵盖视觉推理与代码生成能力评估。', tag: 'tech' },
+    { text: '国际能源署报告显示，2025年可再生能源装机容量首次超过化石燃料总量。', tag: 'world' },
+    { text: '量子计算公司宣布实现 1000 量子比特稳定运行，商业应用窗口或提前至明年。', tag: 'sci' },
+    { text: '亚太科技股集体回暖，半导体板块单日涨幅领跑，市场情绪转向乐观。', tag: 'finance' },
+    { text: '新型纳米抗体药物临床三期数据公布，对多种耐药菌显示出显著抑制效果。', tag: 'health' },
+    { text: '基沃托斯联合委员会就学院间协作框架达成初步共识，细节将于本周正式公布。', tag: 'world' },
+  ]
+};
 
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+/* ═══════════════════════════════════════════════
+   STATE MACHINE
+═══════════════════════════════════════════════ */
+const FSM = (() => {
+  let _state = 'LOADING';
+  let _listeners = [];
 
-        if (!AudioContextClass) {
-            console.warn('[HOTFIX] Web Audio API not supported. Entering silent mode.');
-            State.audioCtx = false;
-            return;
-        }
+  const STATES = ['IDLE','LOADING','SPEAKING','PROCESSING','STANDBY'];
+  const BREATH = {
+    IDLE:       { hz: 1/8,   depth: 0.0025, shadowAmp: 0.7 },
+    LOADING:    { hz: 0,     depth: 0,      shadowAmp: 0   }, // paused
+    SPEAKING:   { hz: 1/5.5, depth: 0.003,  shadowAmp: 1.0 },
+    PROCESSING: { hz: 1/6.5, depth: 0.0022, shadowAmp: 0.9 },
+    STANDBY:    { hz: 1/12,  depth: 0.0015, shadowAmp: 0.4 },
+  };
 
-        try {
-            State.audioCtx = new AudioContextClass();
-            State.analyser = State.audioCtx.createAnalyser();
-            State.analyser.fftSize = 64;
+  return {
+    get state() { return _state; },
+    get breathCfg() { return BREATH[_state]; },
+    transition(newState) {
+      if (!STATES.includes(newState) || newState === _state) return;
+      const prev = _state;
+      _state = newState;
+      _listeners.forEach(fn => fn(newState, prev));
+    },
+    on(fn) { _listeners.push(fn); }
+  };
+})();
 
-            const audioEl = document.getElementById('audio-source');
-            State.source = State.audioCtx.createMediaElementSource(audioEl);
+/* ═══════════════════════════════════════════════
+   BREATHING ENGINE
+   Runs via rAF, applies CSS vars to terminal
+═══════════════════════════════════════════════ */
+const BreathEngine = (() => {
+  let _phase = 0;
+  let _raf = null;
+  let _lastT = null;
+  const el = () => document.getElementById('terminal');
 
-            State.source.connect(State.analyser);
-            State.analyser.connect(State.audioCtx.destination);
+  function tick(t) {
+    if (!_lastT) _lastT = t;
+    const dt = (t - _lastT) / 1000;
+    _lastT = t;
 
-            const bufferLength = State.analyser.frequencyBinCount;
-            State.dataArray = new Uint8Array(bufferLength);
-
-        } catch (e) {
-            console.warn('[HOTFIX] Web Audio init failed, entering silent mode.', e);
-            State.audioCtx = false;
-        }
+    const cfg = FSM.breathCfg;
+    if (cfg.hz > 0) {
+      _phase += dt * cfg.hz * Math.PI * 2;
     }
 
-    // ─── 3. 视觉渲染循环 (60FPS) ───
+    const raw  = (Math.sin(_phase) + 1) / 2; // 0..1
+    const breath = raw * cfg.depth;
+    const scale  = 1 + breath;
+    const shadowBloom = raw * cfg.shadowAmp;
 
-    function startRenderLoop() {
-        if (State.rafId !== null) return;
-        State.rafId = requestAnimationFrame(renderFrame);
+    const term = el();
+    if (term) {
+      term.style.setProperty('--breath', raw.toFixed(4));
+      term.style.setProperty('--breath-scale', scale.toFixed(5));
+      // Dynamic shadow
+      term.style.boxShadow = [
+        `0 0 0 ${(shadowBloom * 7).toFixed(1)}px rgba(255,170,178,${(shadowBloom * 0.1).toFixed(3)})`,
+        `0 16px 48px rgba(255,130,148,${(0.12 + shadowBloom * 0.06).toFixed(3)})`,
+        `0 4px 16px rgba(125,227,248,${(0.08 + shadowBloom * 0.06).toFixed(3)})`,
+        '0 1px 3px rgba(0,0,0,0.04)',
+      ].join(',');
     }
 
-    function renderFrame() {
-        if (!State.isPlaying) {
-            State.rafId = null;
-            resetVisuals();
-            return;
-        }
+    _raf = requestAnimationFrame(tick);
+  }
 
-        if (!State.analyser || !State.dataArray) {
-            State.rafId = requestAnimationFrame(renderFrame);
-            return;
-        }
-
-        State.rafId = requestAnimationFrame(renderFrame);
-
-        State.analyser.getByteFrequencyData(State.dataArray);
-
-        const bars = document.querySelectorAll('.spectrum-bar');
-        const indices = [2, 6, 10, 16, 22];
-
-        let totalVol = 0;
-
-        bars.forEach((bar, i) => {
-            const val = State.dataArray[indices[i]] || 0;
-            totalVol += val;
-            const h = 3 + (val / 255) * 18;
-            bar.style.height = `${h}px`;
-        });
-
-        const avgVol = totalVol / bars.length;
-        const voiceCore = document.getElementById('voice-core');
-        // [STYLE TUNE] 缩放范围收窄：0.85-1.18，弹性感更柔；透明度底值提高到 0.72
-        const scale = 0.85 + (avgVol / 255) * 0.33;
-        const opacity = 0.72 + (avgVol / 255) * 0.28;
-
-        voiceCore.style.transform = `scale(${scale})`;
-        voiceCore.style.opacity = opacity;
+  return {
+    start() {
+      if (_raf) return;
+      _raf = requestAnimationFrame(tick);
+    },
+    stop() {
+      if (_raf) { cancelAnimationFrame(_raf); _raf = null; _lastT = null; }
     }
+  };
+})();
 
-    function resetVisuals() {
-        document.querySelectorAll('.spectrum-bar').forEach(b => b.style.height = '3px');
-        const core = document.getElementById('voice-core');
-        if (core) {
-            // [STYLE TUNE] 复位使用 spring easing（已在 CSS transition 定义）
-            core.style.transform = 'scale(0.85)';
-            core.style.opacity = '0.7';
-        }
+/* ═══════════════════════════════════════════════
+   STATE REACTIONS
+   Each state change drives UI updates
+═══════════════════════════════════════════════ */
+FSM.on((state, prev) => {
+  const terminal  = document.getElementById('terminal');
+  const badge     = document.getElementById('state-badge');
+  const vcore     = document.getElementById('voice-core');
+  const vcoreWrap = document.querySelector('.voice-core-wrap');
+  const wcard     = document.getElementById('weiyu-card');
+  const wlabel    = document.getElementById('weiyu-label');
+  const pstatus   = document.getElementById('player-status');
+
+  /* remove all state classes from terminal */
+  terminal.classList.remove('state-idle','state-loading','state-speaking','state-processing','state-standby');
+  terminal.classList.add(`state-${state.toLowerCase()}`);
+
+  /* badge */
+  badge.className = `state-badge ${state.toLowerCase()}`;
+  badge.textContent = state;
+
+  /* voice core class */
+  vcore.classList.remove('speaking','processing');
+  vcoreWrap && vcoreWrap.classList.remove('speaking','processing');
+
+  /* weiyu card */
+  wcard.classList.remove('speaking');
+  wlabel.classList.remove('speaking');
+
+  /* player status */
+  pstatus.classList.remove('speaking','processing');
+
+  switch(state) {
+    case 'LOADING':
+      BreathEngine.stop();
+      break;
+
+    case 'IDLE':
+      BreathEngine.start();
+      pstatus.textContent = 'READY';
+      break;
+
+    case 'SPEAKING':
+      BreathEngine.start();
+      vcore.classList.add('speaking');
+      vcoreWrap.classList.add('speaking');
+      wcard.classList.add('speaking');
+      wlabel.classList.add('speaking');
+      pstatus.classList.add('speaking');
+      pstatus.textContent = 'BROADCASTING';
+      break;
+
+    case 'PROCESSING':
+      BreathEngine.start();
+      vcore.classList.add('processing');
+      vcoreWrap.classList.add('processing');
+      pstatus.classList.add('processing');
+      pstatus.textContent = 'PROCESSING';
+      triggerSignalStorm();
+      break;
+
+    case 'STANDBY':
+      BreathEngine.start();
+      pstatus.textContent = 'STANDBY';
+      break;
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   SIGNAL METER
+═══════════════════════════════════════════════ */
+let _signalBase = [0,1,1,1,1]; // which bars are normally active
+let _signalInterval = null;
+let _signalStorm = false;
+
+function updateSignalBars(overridePattern) {
+  const bars = document.querySelectorAll('.signal-bar');
+  bars.forEach((b, i) => {
+    b.classList.remove('active','processing-pulse');
+    if (overridePattern) {
+      if (overridePattern[i]) b.classList.add(FSM.state === 'PROCESSING' ? 'processing-pulse' : 'active');
+    } else {
+      if (_signalBase[i]) b.classList.add('active');
     }
+  });
+}
 
-    // ─── 4. 情报解码打字机 ───
-    async function typeWriter(element, text) {
-        const myGen = ++State.typeWriterGen;
-
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%';
-        element.innerHTML = '';
-
-        let currentIndex = 0;
-
-        return new Promise(resolve => {
-            const interval = setInterval(() => {
-                if (myGen !== State.typeWriterGen) {
-                    clearInterval(interval);
-                    resolve();
-                    return;
-                }
-
-                if (currentIndex >= text.length) {
-                    clearInterval(interval);
-                    resolve();
-                    return;
-                }
-
-                let displayedText = text.substring(0, currentIndex);
-                const randomChar = chars[Math.floor(Math.random() * chars.length)];
-
-                element.innerHTML = displayedText + `<span class="decrypt-char">${randomChar}</span>`;
-
-                if (Math.random() > 0.1) {
-                    currentIndex++;
-                }
-            }, 30);
-        });
+function triggerSignalStorm() {
+  if (_signalStorm) return;
+  _signalStorm = true;
+  let tick = 0;
+  const storm = setInterval(() => {
+    if (FSM.state !== 'PROCESSING') {
+      clearInterval(storm);
+      _signalStorm = false;
+      updateSignalBars(_signalBase);
+      return;
     }
-
-    // ─── 5. UI 逻辑与 Glitch ───
-    function triggerGlitch() {
-        const container = document.getElementById('terminal-container');
-        container.classList.add('glitch-active');
-        setTimeout(() => {
-            container.classList.remove('glitch-active');
-        }, CONFIG.glitchDuration);
+    const pat = [0,0,0,0,0].map(() => Math.random() > 0.35 ? 1 : 0);
+    updateSignalBars(pat);
+    tick++;
+    if (tick > 20) {
+      clearInterval(storm);
+      _signalStorm = false;
+      updateSignalBars(_signalBase);
     }
+  }, 180);
+}
 
-    function syncPlayUI(playing) {
-        const pIcon = document.getElementById('icon-play');
-        const pauseIcon = document.getElementById('icon-pause');
-        const recLight = document.getElementById('rec-light');
-        State.isPlaying = playing;
-        if (playing) {
-            pIcon.style.display = 'none';
-            pauseIcon.style.display = 'block';
-            recLight.classList.add('rec-active');
-        } else {
-            pIcon.style.display = 'block';
-            pauseIcon.style.display = 'none';
-            recLight.classList.remove('rec-active');
-            document.querySelectorAll('.news-item').forEach(el => el.classList.remove('processing'));
-        }
+function startClockSignal() {
+  setInterval(() => {
+    const now = new Date();
+    const el = document.getElementById('clock-time');
+    if (el) {
+      el.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     }
-
-    function togglePlay() {
-        const audio = document.getElementById('audio-source');
-
-        initAudioSystem();
-
-        if (State.audioCtx && State.audioCtx.state === 'suspended') {
-            State.audioCtx.resume().catch(() => {});
-        }
-
-        if (audio.paused) {
-            triggerGlitch();
-
-            const playPromise = audio.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    syncPlayUI(true);
-                    startRenderLoop();
-                    const firstNews = document.querySelector('.news-item');
-                    if (firstNews) firstNews.classList.add('processing');
-                }).catch(e => {
-                    console.warn('[HOTFIX] Audio play() rejected:', e);
-                    syncPlayUI(false);
-                });
-            } else {
-                syncPlayUI(true);
-                startRenderLoop();
-                const firstNews = document.querySelector('.news-item');
-                if (firstNews) firstNews.classList.add('processing');
-            }
-
-        } else {
-            audio.pause();
-            syncPlayUI(false);
-        }
+    if (FSM.state === 'IDLE' || FSM.state === 'STANDBY') {
+      // gentle random bar flicker
+      const bars = document.querySelectorAll('.signal-bar');
+      bars.forEach((b, i) => {
+        if (i < 1) return; // keep first bar always off
+        if (Math.random() > 0.75) b.classList.toggle('active');
+        else if (_signalBase[i]) b.classList.add('active');
+      });
     }
+  }, 1000);
+}
 
-    // ─── 音频事件处理 ───
-
-    function _onTimeUpdate() {
-        const audio = document.getElementById('audio-source');
-        if (audio.duration && !isNaN(audio.duration)) {
-            const pct = (audio.currentTime / audio.duration) * 100;
-            document.getElementById('progress-fill').style.width = pct + '%';
-        }
+/* ═══════════════════════════════════════════════
+   TYPEWRITER
+═══════════════════════════════════════════════ */
+function typeWriter(el, text, done) {
+  el.innerHTML = '<span class="weiyu-cursor"></span>';
+  let i = 0;
+  const speed = 38;
+  const cursor = el.querySelector('.weiyu-cursor');
+  function step() {
+    if (i <= text.length) {
+      el.textContent = text.slice(0, i);
+      el.appendChild(cursor);
+      i++;
+      setTimeout(step, speed);
+    } else {
+      done && done();
     }
+  }
+  step();
+}
 
-    function _onAudioEnded() {
-        syncPlayUI(false);
-        document.getElementById('progress-fill').style.width = '0%';
-        resetVisuals();
+/* ═══════════════════════════════════════════════
+   TOUCH FEEDBACK SYSTEM
+   Mobile-first: touchstart / touchend
+   No hover as core interaction
+═══════════════════════════════════════════════ */
+function applyTouchFeedback(el) {
+  let _pressing = false;
+  let _releaseTimer = null;
+
+  function press(e) {
+    _pressing = true;
+    el.classList.remove('released');
+    el.classList.add('pressed');
+    // ripple
+    const rect = el.getBoundingClientRect();
+    const touch = e.changedTouches ? e.changedTouches[0] : e;
+    const x = (touch.clientX - rect.left);
+    const y = (touch.clientY - rect.top);
+    const size = Math.max(rect.width, rect.height);
+    const r = document.createElement('div');
+    r.className = 'ripple';
+    r.style.cssText = `width:${size}px;height:${size}px;left:${x - size/2}px;top:${y - size/2}px`;
+    el.appendChild(r);
+    setTimeout(() => r.remove(), 400);
+  }
+
+  function release() {
+    if (!_pressing) return;
+    _pressing = false;
+    el.classList.remove('pressed');
+    el.classList.add('released');
+    if (_releaseTimer) clearTimeout(_releaseTimer);
+    _releaseTimer = setTimeout(() => el.classList.remove('released'), 250);
+  }
+
+  el.addEventListener('touchstart', press, { passive: true });
+  el.addEventListener('touchend',   release, { passive: true });
+  el.addEventListener('touchcancel', release, { passive: true });
+  // mouse fallback for desktop preview
+  el.addEventListener('mousedown', press, { passive: true });
+  el.addEventListener('mouseup',   release, { passive: true });
+}
+
+/* ═══════════════════════════════════════════════
+   AUDIO SYSTEM
+═══════════════════════════════════════════════ */
+let _audioCtx = null;
+let _analyser  = null;
+let _source    = null;
+let _vizRaf    = null;
+
+function initAudio() {
+  if (_audioCtx) return;
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _analyser = _audioCtx.createAnalyser();
+    _analyser.fftSize = 64;
+    _analyser.connect(_audioCtx.destination);
+    const audio = document.getElementById('audio-source');
+    _source = _audioCtx.createMediaElementSource(audio);
+    _source.connect(_analyser);
+  } catch(e) {}
+}
+
+function startVizLoop() {
+  if (!_analyser || _vizRaf) return;
+  const buf = new Uint8Array(_analyser.frequencyBinCount);
+  const fill = document.getElementById('progress-fill');
+
+  function loop() {
+    _analyser.getByteFrequencyData(buf);
+    // Use audio energy to modulate voice core glow
+    const energy = buf.slice(0,8).reduce((a,b) => a+b, 0) / (8 * 255);
+    const core = document.getElementById('voice-core');
+    if (core && FSM.state === 'SPEAKING') {
+      const glow = 4 + energy * 20;
+      const bloom = 4 + energy * 12;
+      core.style.boxShadow = [
+        `0 0 0 ${(3 + energy * 5).toFixed(1)}px rgba(255,170,178,${(0.2 + energy * 0.25).toFixed(2)})`,
+        `0 0 ${glow.toFixed(1)}px rgba(255,142,153,${(0.2 + energy * 0.35).toFixed(2)})`,
+        `0 4px ${bloom.toFixed(1)}px rgba(255,142,153,0.2)`,
+        'inset 0 1px 2px rgba(255,255,255,0.9)',
+      ].join(',');
     }
+    _vizRaf = requestAnimationFrame(loop);
+  }
+  loop();
+}
 
-    function _onAudioError(e) {
-        console.warn('[HOTFIX] Audio element error:', e);
-        syncPlayUI(false);
-        resetVisuals();
-        document.getElementById('audio-wrapper').style.display = 'none';
+function stopVizLoop() {
+  if (_vizRaf) { cancelAnimationFrame(_vizRaf); _vizRaf = null; }
+  const core = document.getElementById('voice-core');
+  if (core) core.style.boxShadow = '';
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  return `${m}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
+}
+
+function togglePlay() {
+  initAudio();
+  if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume().catch(()=>{});
+
+  const audio = document.getElementById('audio-source');
+  const playI  = document.getElementById('play-icon');
+  const pauseI = document.getElementById('pause-icon');
+
+  if (!audio.src || audio.src === window.location.href) {
+    // Demo: no audio loaded — simulate PROCESSING mode
+    if (FSM.state !== 'PROCESSING') {
+      FSM.transition('PROCESSING');
+      playI.style.display  = 'none';
+      pauseI.style.display = 'block';
+      triggerScanHighlight();
+      // auto-revert after demo
+      setTimeout(() => {
+        FSM.transition('SPEAKING');
+        setTimeout(() => FSM.transition('IDLE'), 4000);
+      }, 3000);
+    } else {
+      FSM.transition('IDLE');
+      playI.style.display  = 'block';
+      pauseI.style.display = 'none';
+      clearScanHighlight();
     }
+    return;
+  }
 
-    // ─── [STYLE TUNE] Idle 闲置反馈系统 ───
-    // 45-90秒无交互 → voice-core 轻触脉冲 + MOMOTALK 边框闪动
-    // 极低频率，不影响主功能
-    let _idleTimer = null;
-    let _idleDelay = 0;
+  if (audio.paused) {
+    triggerGlitch();
+    audio.play().then(() => {
+      FSM.transition('SPEAKING');
+      playI.style.display  = 'none';
+      pauseI.style.display = 'block';
+      startVizLoop();
+      triggerScanHighlight();
+    }).catch(() => {});
+  } else {
+    audio.pause();
+    FSM.transition('IDLE');
+    playI.style.display  = 'block';
+    pauseI.style.display = 'none';
+    stopVizLoop();
+    clearScanHighlight();
+  }
+}
 
-    function _randomIdleDelay() {
-        return 45000 + Math.random() * 45000; // 45-90s
+/* ═══════════════════════════════════════════════
+   SCAN HIGHLIGHT (PROCESSING)
+   Progressive scan through news items
+═══════════════════════════════════════════════ */
+let _scanIdx = 0;
+let _scanTimer = null;
+
+function triggerScanHighlight() {
+  const items = document.querySelectorAll('.news-item');
+  if (!items.length) return;
+  _scanIdx = 0;
+  clearScanHighlight();
+  FSM.transition('PROCESSING');
+
+  function scanNext() {
+    if (_scanIdx >= items.length) {
+      setTimeout(() => {
+        clearScanHighlight();
+        if (FSM.state === 'PROCESSING') FSM.transition('SPEAKING');
+      }, 400);
+      return;
     }
+    // Remove prev
+    if (_scanIdx > 0) items[_scanIdx - 1].classList.remove('processing-scan');
+    items[_scanIdx].classList.add('processing-scan');
+    _scanIdx++;
+    _scanTimer = setTimeout(scanNext, 700);
+  }
+  scanNext();
+}
 
-    function _triggerIdleNudge() {
-        const core = document.getElementById('voice-core');
-        const card = document.getElementById('weiyu-card');
-        const label = document.getElementById('momotalk-label');
+function clearScanHighlight() {
+  if (_scanTimer) { clearTimeout(_scanTimer); _scanTimer = null; }
+  document.querySelectorAll('.news-item').forEach(el => el.classList.remove('processing-scan'));
+}
 
-        if (core && !State.isPlaying) {
-            core.classList.add('idle-pulse-anim');
-            setTimeout(() => core.classList.remove('idle-pulse-anim'), 1300);
-        }
+/* ═══════════════════════════════════════════════
+   GLITCH
+═══════════════════════════════════════════════ */
+function triggerGlitch() {
+  const t = document.getElementById('terminal');
+  t.classList.add('glitch-active');
+  setTimeout(() => t.classList.remove('glitch-active'), 180);
+}
 
-        if (card && label) {
-            card.classList.add('idle-nudge');
-            label.classList.add('idle-badge');
-            setTimeout(() => {
-                card.classList.remove('idle-nudge');
-                label.classList.remove('idle-badge');
-            }, 2200);
-        }
+/* ═══════════════════════════════════════════════
+   IDLE NUDGE SYSTEM
+═══════════════════════════════════════════════ */
+let _idleTimer = null;
+let _standbyTimer = null;
 
-        // 重置到下一次 idle
-        _scheduleIdleNudge();
-    }
+function resetIdleTimers() {
+  if (_idleTimer)    clearTimeout(_idleTimer);
+  if (_standbyTimer) clearTimeout(_standbyTimer);
 
-    function _scheduleIdleNudge() {
-        if (_idleTimer) clearTimeout(_idleTimer);
-        _idleTimer = setTimeout(_triggerIdleNudge, _randomIdleDelay());
-    }
+  if (FSM.state === 'STANDBY') FSM.transition('IDLE');
 
-    function _resetIdleTimer() {
-        _scheduleIdleNudge();
-    }
+  _idleTimer = setTimeout(() => {
+    if (FSM.state !== 'IDLE') return;
+    // nudge
+    const core  = document.getElementById('voice-core');
+    const wcard = document.getElementById('weiyu-card');
+    const wlabel = document.getElementById('weiyu-label');
+    if (core) { core.classList.add('idle-pulse-anim'); setTimeout(() => core.classList.remove('idle-pulse-anim'), 1000); }
+    if (wcard) { wcard.classList.add('idle-nudge'); wlabel.classList.add('idle-badge'); setTimeout(() => { wcard.classList.remove('idle-nudge'); wlabel.classList.remove('idle-badge'); }, 2000); }
+    // reschedule
+    resetIdleTimers();
+  }, CONFIG.idleNudgeMin + Math.random() * (CONFIG.idleNudgeMax - CONFIG.idleNudgeMin));
 
-    // 用户活跃时重置 idle 计时
-    ['mousemove', 'click', 'keydown', 'touchstart'].forEach(evt => {
-        document.addEventListener(evt, _resetIdleTimer, { passive: true });
+  _standbyTimer = setTimeout(() => {
+    if (FSM.state === 'IDLE') FSM.transition('STANDBY');
+  }, CONFIG.standbyDelay);
+}
+
+['touchstart','click','keydown','mousemove'].forEach(evt => {
+  document.addEventListener(evt, resetIdleTimers, { passive: true });
+});
+
+/* ═══════════════════════════════════════════════
+   AUDIO EVENTS
+═══════════════════════════════════════════════ */
+(function bindAudioEvents() {
+  const audio = document.getElementById('audio-source');
+
+  audio.addEventListener('timeupdate', () => {
+    const pct  = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+    const fill = document.getElementById('progress-fill');
+    fill.style.width = pct + '%';
+    if (pct > 1) fill.classList.add('active'); else fill.classList.remove('active');
+    document.getElementById('time-current').textContent = formatTime(audio.currentTime);
+    document.getElementById('time-total').textContent   = formatTime(audio.duration || 0);
+  });
+
+  audio.addEventListener('ended', () => {
+    document.getElementById('play-icon').style.display  = 'block';
+    document.getElementById('pause-icon').style.display = 'none';
+    document.getElementById('progress-fill').style.width = '0%';
+    stopVizLoop();
+    clearScanHighlight();
+    FSM.transition('IDLE');
+  });
+
+  audio.addEventListener('error', () => {
+    document.getElementById('audio-wrapper').style.display = 'none';
+  });
+})();
+
+/* ═══════════════════════════════════════════════
+   RENDER UI
+═══════════════════════════════════════════════ */
+function renderUI(data) {
+  /* date */
+  const dateEl = document.getElementById('date-display');
+  if (dateEl) dateEl.textContent = data.date || DEMO.date;
+
+  /* news */
+  const list = document.getElementById('news-list');
+  const newsData = (data.news || []).map(n => typeof n === 'string' ? { text: n, tag: 'world' } : n);
+  const countEl = document.getElementById('news-count');
+  if (countEl) countEl.textContent = `${newsData.length}件`;
+
+  list.innerHTML = '';
+  newsData.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.className = 'news-item';
+    li.setAttribute('role','button');
+    const idx2 = String(idx + 1).padStart(2,'0');
+    const text  = typeof item === 'string' ? item : (item.text || item);
+    const tag   = item.tag || 'world';
+    li.innerHTML = `
+      <div class="news-index">${idx2}</div>
+      <div class="news-content">${text}</div>
+      <div class="news-tag tag-${tag}">${tag.toUpperCase()}</div>
+    `;
+    applyTouchFeedback(li);
+    // tap → trigger processing scan on single item
+    li.addEventListener('click', () => {
+      if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
+      li.classList.add('processing-scan');
+      setTimeout(() => li.classList.remove('processing-scan'), 1500);
     });
+    list.appendChild(li);
+  });
 
-    // ─── 6. 数据加载与渲染 ───
+  /* weiyu text */
+  const weiyuEl = document.getElementById('weiyu-text');
+  const txt = data.weiyu || DEMO.weiyu;
+  typeWriter(weiyuEl, txt, () => {});
 
-    let _clockInterval = null;
+  /* audio */
+  const audio = document.getElementById('audio-source');
+  const audioWrap = document.getElementById('audio-wrapper');
+  if (data.audio) {
+    audio.src = data.audio;
+    audioWrap.style.display = 'block';
+  }
+  // audioWrap always shown in this design
 
-    function _startClock() {
-        if (_clockInterval) return;
-        _clockInterval = setInterval(() => {
-            const now = new Date();
-            document.getElementById('clock-time').innerText =
-                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  /* transition from LOADING → IDLE with reveal */
+  const loadScreen = document.getElementById('loading-screen');
+  loadScreen.classList.add('done');
+  setTimeout(() => { loadScreen.style.display = 'none'; }, 600);
 
-            const bars = document.querySelectorAll('.signal-bar');
-            bars.forEach(b => {
-                if (Math.random() > 0.6) b.classList.toggle('active'); // [STYLE TUNE] 0.5→0.6，信号更稳
-            });
-        }, 1000);
-    }
+  FSM.transition('IDLE');
+  resetIdleTimers();
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            clearInterval(_clockInterval);
-            _clockInterval = null;
-            if (State.rafId !== null) {
-                cancelAnimationFrame(State.rafId);
-                State.rafId = null;
-            }
-        } else {
-            _startClock();
-            if (State.isPlaying && State.rafId === null) {
-                startRenderLoop();
-            }
-        }
+  /* stagger-reveal items */
+  document.querySelectorAll('.reveal-item').forEach((el, i) => {
+    setTimeout(() => el.classList.add('visible'), 300 + i * 80);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+async function init() {
+  startClockSignal();
+
+  /* date now */
+  document.getElementById('date-display').textContent = DEMO.date;
+
+  /* bind play button */
+  const vcore = document.getElementById('voice-core');
+  applyTouchFeedback(vcore);
+  vcore.addEventListener('click', togglePlay);
+
+  /* bind nav buttons */
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    applyTouchFeedback(btn);
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
+  });
 
-    async function init() {
-        _startClock();
-        _scheduleIdleNudge(); // [STYLE TUNE] 启动 idle 监听
+  /* try API, fallback to demo */
+  try {
+    const cached = localStorage.getItem(CONFIG.cacheKey);
+    if (cached) renderUI(JSON.parse(cached));
 
-        try {
-            const cached = localStorage.getItem(CONFIG.cacheKey);
-            if (cached) renderUI(JSON.parse(cached));
+    const res  = await fetch(`${CONFIG.api}?t=${Date.now()}`);
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    const d    = data.data || data;
+    localStorage.setItem(CONFIG.cacheKey, JSON.stringify(d));
+    renderUI(d);
+  } catch(e) {
+    console.info('[Schale Terminal] API unavailable, using demo data.');
+    renderUI(DEMO);
+  }
+}
 
-            const res = await fetch(`${CONFIG.api}?t=${Date.now()}`);
-            const data = await res.json();
+document.addEventListener('DOMContentLoaded', init);
 
-            const validData = data.data || data;
-            localStorage.setItem(CONFIG.cacheKey, JSON.stringify(validData));
-            renderUI(validData);
-
-        } catch (e) {
-            console.warn('Intel fetch failed, switching to offline mode.', e);
-            document.getElementById('weiyu-text').innerText = "CONNECTION LOST. PLEASE CHECK SCHALE NETWORK.";
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-        }
-    }
-
-    function renderUI(data) {
-        document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-
-        document.getElementById('date-display').innerText = data.date || "UNKNOWN DATE";
-
-        const text = data.weiyu || "Welcome back, Sensei.";
-        typeWriter(document.getElementById('weiyu-text'), text);
-
-        const audioWrap = document.getElementById('audio-wrapper');
-        const audio = document.getElementById('audio-source');
-        if (data.audio) {
-            audioWrap.style.display = 'block';
-            audio.src = data.audio;
-
-            audio.removeEventListener('timeupdate', _onTimeUpdate);
-            audio.removeEventListener('ended', _onAudioEnded);
-            audio.removeEventListener('error', _onAudioError);
-            audio.addEventListener('timeupdate', _onTimeUpdate);
-            audio.addEventListener('ended', _onAudioEnded);
-            audio.addEventListener('error', _onAudioError);
-        }
-
-        const list = document.getElementById('news-list');
-        list.innerHTML = '';
-        if (data.news && Array.isArray(data.news)) {
-            data.news.forEach((item, idx) => {
-                const li = document.createElement('li');
-                li.className = 'news-item';
-                let indexNum = String(idx + 1).padStart(2, '0');
-                let content = item;
-                const match = item.match(/^(\d+)[、.](.*)/);
-                if (match) { content = match[2]; }
-
-                li.innerHTML = `
-                    <div class="news-index">${indexNum}</div>
-                    <div class="news-content">${content}</div>
-                `;
-                list.appendChild(li);
-            });
-        }
-    }
-
-    document.getElementById('play-btn').addEventListener('click', togglePlay);
-
-    window.onload = init;
-
+/* page visibility */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    BreathEngine.stop();
+    stopVizLoop();
+  } else {
+    if (FSM.state !== 'LOADING') BreathEngine.start();
+    if (FSM.state === 'SPEAKING') startVizLoop();
+  }
+});
 </script>
 </body>
 </html>
