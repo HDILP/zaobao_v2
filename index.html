@@ -1969,15 +1969,21 @@ function startClock() {
    TYPE WRITER
 ═══════════════════════════════════════════════ */
 function typeWriter(el, text, onDone) {
+  if (!el) return;
+  if (el._typeTimer) clearTimeout(el._typeTimer);
+  el._typeRun = (el._typeRun || 0) + 1;
+  const runId = el._typeRun;
+
   el.innerHTML = '';
   const cursor = document.createElement('span');
   cursor.className = 'weiyu-cursor';
   let i = 0;
   function next() {
+    if (runId !== el._typeRun) return;
     if (i >= text.length) { el.appendChild(cursor); if (onDone) onDone(); return; }
     el.appendChild(document.createTextNode(text[i++]));
     el.appendChild(cursor);
-    setTimeout(next, 28 + Math.random() * 32);
+    el._typeTimer = setTimeout(next, 28 + Math.random() * 32);
   }
   next();
 }
