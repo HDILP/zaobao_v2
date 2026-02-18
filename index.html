@@ -1323,6 +1323,7 @@ const ParticleEngine = (() => {
 ═══════════════════════════════════════════════ */
 const WidgetEngine = (() => {
   let wCanvas, wCtx, wPhase = 0, wLoad = 0.55;
+  let _waveRaf = null, _streamTimer = null;
   const HEX_CHARS  = '0123456789ABCDEF';
   const CODE_WORDS = ['0xC4FF','AUTH','SYNC','0x3A1B','KIVOTOS','DECODE','0xFF80','SCH4LE','INTEL','0x7E2A'];
 
@@ -1356,7 +1357,7 @@ const WidgetEngine = (() => {
     }
     wCtx.strokeStyle = 'rgba(96,212,200,0.85)'; wCtx.lineWidth = 1.2; wCtx.stroke();
     wCtx.restore();
-    requestAnimationFrame(waveformTick);
+    _waveRaf = requestAnimationFrame(waveformTick);
   }
 
   function buildCodeStream() {
@@ -1380,6 +1381,9 @@ const WidgetEngine = (() => {
 
   return {
     init() {
+      if (_waveRaf) { cancelAnimationFrame(_waveRaf); _waveRaf = null; }
+      if (_streamTimer) { clearInterval(_streamTimer); _streamTimer = null; }
+
       wCanvas = document.getElementById('waveform-canvas');
       if (wCanvas) {
         const dpr  = window.devicePixelRatio || 1;
@@ -1387,10 +1391,10 @@ const WidgetEngine = (() => {
         wCanvas.width  = Math.round((rect.width  || 80) * dpr);
         wCanvas.height = Math.round((rect.height || 26) * dpr);
         wCtx = wCanvas.getContext('2d');
-        requestAnimationFrame(waveformTick);
+        _waveRaf = requestAnimationFrame(waveformTick);
       }
       buildCodeStream();
-      setInterval(buildCodeStream, 12000);
+      _streamTimer = setInterval(buildCodeStream, 12000);
     }
   };
 })();
