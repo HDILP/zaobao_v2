@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>早报 | Schale Intelligence Terminal v2</title>
+<title>早報 · Schale Intelligence Terminal v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -26,13 +26,10 @@
   --glass-inner: rgba(255,255,255,0.75);
   --noise:       0.022;
 
-  /* State-driven breath tokens (updated by JS) */
-  --breath: 0;              /* 0..1 sinusoidal */
-  --breath-shadow-r: 255;
-  --breath-shadow-g: 142;
-  --breath-shadow-b: 153;
+  /* Physiological state vars — driven by JS */
+  --breath:       0;
   --breath-scale: 1;
-  --breath-opacity: 1;
+  --scan-speed:   40s;
 
   /* Transitions */
   --t-fast: 0.18s;
@@ -64,7 +61,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ── background gradient mesh ── */
+/* ── static background mesh ── */
 body::before {
   content: '';
   position: fixed;
@@ -76,6 +73,23 @@ body::before {
     linear-gradient(160deg, #eef3fa 0%, #f9f0f5 100%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* ── breath saturation overlay (driven by JS opacity) ── */
+#bg-breath-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 60% at 30% 40%,
+    rgba(255,190,210,0.5) 0%,
+    rgba(200,230,255,0.3) 60%,
+    transparent 100%
+  );
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+  transition: opacity 0.5s ease;
+  will-change: opacity;
 }
 
 /* ═══════════════════════════════════════════════
@@ -101,7 +115,7 @@ body::before {
 .side-strip-r { right: 6px; transform: translateY(-50%) rotate(180deg); }
 
 /* ═══════════════════════════════════════════════
-   MAIN CONTAINER
+   MAIN CONTAINER — LIVING VESSEL
 ═══════════════════════════════════════════════ */
 .terminal {
   width: calc(100% - 24px);
@@ -117,19 +131,19 @@ body::before {
   outline: 1.5px solid rgba(255,170,178,0.28);
   outline-offset: 3px;
 
-  /* Breathing shadow - driven by CSS var */
+  /* Initial shadow — will be driven by BreathEngine */
   box-shadow:
-    0 0 0 calc(var(--breath) * 6px) rgba(255,170,178,0.10),
+    0 0 0 0px rgba(255,170,178,0),
     0 16px 48px rgba(255,130,148,0.15),
     0 4px 16px rgba(125,227,248,0.12),
     0 1px 3px rgba(0,0,0,0.04);
 
-  transform: scale(var(--breath-scale));
-  will-change: box-shadow, transform;
+  transform: scale(var(--breath-scale, 1));
+  will-change: box-shadow, transform, filter, backdrop-filter;
   overflow: hidden;
 }
 
-/* noise texture overlay */
+/* ── noise texture ── */
 .terminal::before {
   content: '';
   position: absolute; inset: 0;
@@ -142,7 +156,7 @@ body::before {
   mix-blend-mode: overlay;
 }
 
-/* scanlines */
+/* ── scanlines — speed driven by --scan-speed ── */
 .terminal::after {
   content: '';
   position: absolute; inset: 0;
@@ -151,29 +165,39 @@ body::before {
     0deg,
     transparent 0px,
     transparent 3px,
-    rgba(106,217,245,0.015) 3px,
-    rgba(106,217,245,0.015) 4px
+    rgba(106,217,245,0.014) 3px,
+    rgba(106,217,245,0.014) 4px
   );
-  animation: scanMove 20s linear infinite;
+  animation: scanMove var(--scan-speed, 40s) linear infinite;
   pointer-events: none;
   z-index: 99;
 }
 @keyframes scanMove { from { background-position: 0 0; } to { background-position: 0 200px; } }
 
-/* ── LOADING dim state ── */
-.terminal.state-loading {
-  filter: brightness(0.92) saturate(0.85);
-  transition: filter var(--t-slow) ease;
+/* ── state-driven scan speed ── */
+.terminal.state-loading    { --scan-speed: 20s; }
+.terminal.state-idle       { --scan-speed: 40s; }
+.terminal.state-speaking   { --scan-speed: 12s; }
+.terminal.state-processing { --scan-speed: 5s;  }
+.terminal.state-standby    { --scan-speed: 65s; }
+
+/* ── Low activity — subtle interior dimming ── */
+.terminal[data-activity="low"] .weiyu-card,
+.terminal[data-activity="low"] .player-card,
+.terminal[data-activity="low"] .news-item {
+  opacity: 0.92;
+  transition: opacity 1.2s ease;
 }
-.terminal.state-standby {
-  filter: brightness(0.97) saturate(0.9);
-  transition: filter var(--t-slow) ease;
+.terminal[data-activity="low"] .header-right {
+  opacity: 0.85;
+  transition: opacity 1.2s ease;
 }
-.terminal.state-idle,
-.terminal.state-speaking,
-.terminal.state-processing {
-  filter: brightness(1) saturate(1);
-  transition: filter var(--t-mid) ease;
+.terminal[data-activity="normal"] .weiyu-card,
+.terminal[data-activity="normal"] .player-card,
+.terminal[data-activity="normal"] .news-item,
+.terminal[data-activity="normal"] .header-right {
+  opacity: 1;
+  transition: opacity 0.3s ease;
 }
 
 /* ═══════════════════════════════════════════════
@@ -192,11 +216,11 @@ body::before {
   z-index: 200;
   transition: background var(--t-mid), color var(--t-mid), opacity var(--t-mid);
 }
-.state-badge.idle     { background: rgba(125,227,248,0.18); color: var(--blue-deep); }
-.state-badge.loading  { background: rgba(255,200,100,0.2);  color: #c87800; }
-.state-badge.speaking { background: rgba(255,170,178,0.25); color: var(--pink-dark); }
-.state-badge.processing { background: rgba(96,212,200,0.2); color: var(--teal); }
-.state-badge.standby  { background: rgba(186,200,216,0.2);  color: var(--text-light); }
+.state-badge.idle       { background: rgba(125,227,248,0.18); color: var(--blue-deep); }
+.state-badge.loading    { background: rgba(255,200,100,0.2);  color: #c87800; }
+.state-badge.speaking   { background: rgba(255,170,178,0.25); color: var(--pink-dark); }
+.state-badge.processing { background: rgba(96,212,200,0.2);   color: var(--teal); }
+.state-badge.standby    { background: rgba(186,200,216,0.2);  color: var(--text-light); }
 
 /* ═══════════════════════════════════════════════
    HEADER
@@ -209,7 +233,6 @@ body::before {
   position: relative;
   z-index: 10;
 }
-
 .title-block h1 {
   margin: 0;
   font-size: 26px;
@@ -230,15 +253,14 @@ body::before {
   margin-top: 5px;
   opacity: 0.85;
 }
-
 .header-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-  padding-right: 4px; /* account for badge */
+  padding-right: 4px;
+  transition: opacity var(--t-slow);
 }
-
 .date-pill {
   background: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(255,238,240,0.9) 100%);
   padding: 5px 13px;
@@ -263,21 +285,19 @@ body::before {
   width: 3px;
   background: var(--text-faint);
   border-radius: 2px;
-  transition: background var(--t-fast), height var(--t-fast);
+  transition: background 0.12s ease, height 0.12s ease;
 }
+/* Default heights — JS may override during SPEAKING */
 .signal-bar:nth-child(1) { height: 30%; }
 .signal-bar:nth-child(2) { height: 55%; }
 .signal-bar:nth-child(3) { height: 75%; }
 .signal-bar:nth-child(4) { height: 90%; }
 .signal-bar:nth-child(5) { height: 100%; }
-.signal-bar.active { background: var(--blue-deep); }
-.signal-bar.processing-pulse {
-  background: var(--teal);
-  transition: background 0.1s, height 0.1s;
-}
+.signal-bar.active           { background: var(--blue-deep); }
+.signal-bar.processing-pulse { background: var(--teal); transition: background 0.08s, height 0.08s; }
 
 /* ═══════════════════════════════════════════════
-   WEIYU CARD (Intel Decoder)
+   WEIYU CARD
 ═══════════════════════════════════════════════ */
 .weiyu-wrap {
   padding: 4px 18px 12px;
@@ -291,7 +311,7 @@ body::before {
   padding: 14px 15px 13px;
   position: relative;
   box-shadow: 0 2px 12px rgba(255,170,178,0.1), 0 1px 4px rgba(125,227,248,0.05);
-  transition: box-shadow var(--t-mid), border-color var(--t-mid);
+  transition: box-shadow var(--t-mid), border-color var(--t-mid), opacity var(--t-slow);
   min-height: 58px;
 }
 .weiyu-card.speaking {
@@ -315,13 +335,8 @@ body::before {
   font-family: "JetBrains Mono", monospace;
   transition: background var(--t-mid), box-shadow var(--t-mid);
 }
-.weiyu-label.speaking {
-  background: var(--pink-dark);
-  box-shadow: 0 0 10px rgba(255,142,153,0.45);
-}
-.weiyu-label.idle-badge {
-  box-shadow: 0 0 10px rgba(255,170,178,0.6);
-}
+.weiyu-label.speaking  { background: var(--pink-dark); box-shadow: 0 0 10px rgba(255,142,153,0.45); }
+.weiyu-label.idle-badge{ box-shadow: 0 0 10px rgba(255,170,178,0.6); }
 .weiyu-text {
   font-size: 13px;
   line-height: 1.65;
@@ -331,8 +346,7 @@ body::before {
 }
 .weiyu-cursor {
   display: inline-block;
-  width: 1.5px;
-  height: 14px;
+  width: 1.5px; height: 14px;
   background: var(--pink-dark);
   margin-left: 1px;
   vertical-align: middle;
@@ -349,56 +363,40 @@ body::before {
   z-index: 10;
 }
 .player-card {
-  background: linear-gradient(135deg,
-    rgba(255,238,240,0.75) 0%,
-    rgba(235,246,255,0.75) 100%
-  );
+  background: linear-gradient(135deg, rgba(255,238,240,0.75) 0%, rgba(235,246,255,0.75) 100%);
   border: 1.5px solid rgba(255,200,210,0.45);
   border-radius: 16px;
   padding: 14px 16px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(255,170,178,0.08);
+  transition: opacity var(--t-slow);
 }
 .player-card::before {
   content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg,
-    rgba(255,255,255,0.5) 0%,
-    rgba(125,227,248,0.05) 100%
-  );
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(125,227,248,0.05) 100%);
   pointer-events: none;
 }
-
-.player-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
+.player-row { display: flex; align-items: center; gap: 14px; }
 
 /* Voice Core */
 .voice-core-wrap {
-  position: relative;
-  flex-shrink: 0;
+  position: relative; flex-shrink: 0;
   width: 52px; height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
 }
-/* halo rings - breathing */
 .core-halo {
   position: absolute;
   border-radius: 50%;
   border: 1.5px solid rgba(255,170,178,0.3);
-  animation: none;
   transition: opacity var(--t-mid), transform var(--t-mid);
 }
 .halo-1 { width: 52px; height: 52px; }
 .halo-2 { width: 64px; height: 64px; border-color: rgba(125,227,248,0.2); }
 .halo-3 { width: 76px; height: 76px; border-color: rgba(255,170,178,0.12); }
 
-/* speaking: halos animate outward */
+/* speaking: halos pulse out */
 .speaking .halo-1 { animation: halo-pulse 1.4s ease-out infinite; }
 .speaking .halo-2 { animation: halo-pulse 1.4s ease-out infinite 0.3s; }
 .speaking .halo-3 { animation: halo-pulse 1.4s ease-out infinite 0.6s; }
@@ -406,9 +404,9 @@ body::before {
 .processing .halo-2 { animation: halo-scan 1.2s ease-in-out infinite 0.2s; }
 
 @keyframes halo-pulse {
-  0%   { transform: scale(1); opacity: 0.6; }
+  0%   { transform: scale(1);    opacity: 0.6; }
   60%  { transform: scale(1.25); opacity: 0.15; }
-  100% { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(1.4);  opacity: 0; }
 }
 @keyframes halo-scan {
   0%, 100% { border-color: rgba(125,227,248,0.25); }
@@ -424,11 +422,8 @@ body::before {
     0 0 0 2px rgba(255,170,178,0.2),
     0 4px 12px rgba(255,142,153,0.18),
     inset 0 1px 2px rgba(255,255,255,0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; z-index: 2;
   transition: box-shadow var(--t-mid), background var(--t-mid);
   cursor: pointer;
 }
@@ -447,54 +442,39 @@ body::before {
     0 4px 12px rgba(125,227,248,0.2),
     inset 0 1px 2px rgba(255,255,255,0.9);
 }
-.voice-core.idle-pulse-anim {
-  animation: idle-core-pulse 0.9s ease-out;
-}
+.voice-core.idle-pulse-anim { animation: idle-core-pulse 0.9s ease-out; }
 @keyframes idle-core-pulse {
-  0%   { box-shadow: 0 0 0 2px rgba(255,170,178,0.2), 0 4px 12px rgba(255,142,153,0.18), inset 0 1px 2px rgba(255,255,255,0.9); }
-  40%  { box-shadow: 0 0 0 6px rgba(255,170,178,0.22), 0 0 24px rgba(255,142,153,0.32), inset 0 1px 2px rgba(255,255,255,0.9); }
-  100% { box-shadow: 0 0 0 2px rgba(255,170,178,0.2), 0 4px 12px rgba(255,142,153,0.18), inset 0 1px 2px rgba(255,255,255,0.9); }
+  0%   { box-shadow: 0 0 0 2px rgba(255,170,178,0.2),  0 4px 12px rgba(255,142,153,0.18), inset 0 1px 2px rgba(255,255,255,0.9); }
+  40%  { box-shadow: 0 0 0 6px rgba(255,170,178,0.22), 0 0 24px rgba(255,142,153,0.32),   inset 0 1px 2px rgba(255,255,255,0.9); }
+  100% { box-shadow: 0 0 0 2px rgba(255,170,178,0.2),  0 4px 12px rgba(255,142,153,0.18), inset 0 1px 2px rgba(255,255,255,0.9); }
 }
 
-/* play/pause icon */
-.play-icon { width: 18px; height: 18px; fill: var(--pink-dark); transition: fill var(--t-fast); }
+.play-icon  { width: 18px; height: 18px; fill: var(--pink-dark); transition: fill var(--t-fast); }
 .pause-icon { width: 18px; height: 18px; fill: var(--pink-dark); display: none; }
 
-/* Player right side */
 .player-meta { flex: 1; min-width: 0; }
 .player-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 13px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-bottom: 4px;
 }
 .player-status {
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.8px;
-  text-transform: uppercase;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase;
   color: var(--text-light);
   transition: color var(--t-mid);
 }
-.player-status.speaking { color: var(--pink-dark); }
+.player-status.speaking   { color: var(--pink-dark); }
 .player-status.processing { color: var(--teal); }
 
-/* progress bar */
 .progress-track {
-  margin-top: 10px;
-  height: 3px;
+  margin-top: 10px; height: 3px;
   background: rgba(186,200,216,0.35);
-  border-radius: 100px;
-  overflow: hidden;
-  position: relative;
+  border-radius: 100px; overflow: hidden; position: relative;
 }
 .progress-fill {
-  height: 100%;
-  width: 0%;
+  height: 100%; width: 0%;
   background: linear-gradient(90deg, var(--pink) 0%, var(--blue) 100%);
   border-radius: 100px;
   transition: width 0.5s linear;
@@ -503,25 +483,18 @@ body::before {
 .progress-fill::after {
   content: '';
   position: absolute;
-  right: -1px; top: 50%;
-  transform: translateY(-50%);
+  right: -1px; top: 50%; transform: translateY(-50%);
   width: 5px; height: 5px;
-  background: var(--pink-dark);
-  border-radius: 50%;
+  background: var(--pink-dark); border-radius: 50%;
   box-shadow: 0 0 4px rgba(255,142,153,0.6);
-  opacity: 0;
-  transition: opacity var(--t-fast);
+  opacity: 0; transition: opacity var(--t-fast);
 }
 .progress-fill.active::after { opacity: 1; }
-
-/* time display */
 .time-row {
-  display: flex;
-  justify-content: space-between;
+  display: flex; justify-content: space-between;
   margin-top: 5px;
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  color: var(--text-faint);
+  font-size: 9px; color: var(--text-faint);
 }
 
 /* ═══════════════════════════════════════════════
@@ -529,75 +502,55 @@ body::before {
 ═══════════════════════════════════════════════ */
 .section-head {
   padding: 4px 18px 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  position: relative;
-  z-index: 10;
+  display: flex; align-items: center; gap: 10px;
+  position: relative; z-index: 10;
 }
 .section-label {
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  text-transform: uppercase;
-  color: var(--text-light);
-  white-space: nowrap;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--text-light); white-space: nowrap;
 }
 .section-line {
-  flex: 1;
-  height: 1px;
+  flex: 1; height: 1px;
   background: linear-gradient(90deg, rgba(186,200,216,0.4) 0%, transparent 100%);
 }
 .section-count {
   font-family: "JetBrains Mono", monospace;
-  font-size: 8.5px;
-  font-weight: 700;
+  font-size: 8.5px; font-weight: 700;
   color: var(--pink);
   background: rgba(255,170,178,0.12);
-  padding: 2px 7px;
-  border-radius: 100px;
+  padding: 2px 7px; border-radius: 100px;
 }
 
 /* ═══════════════════════════════════════════════
    NEWS LIST
 ═══════════════════════════════════════════════ */
 .news-list {
-  list-style: none;
-  margin: 0;
+  list-style: none; margin: 0;
   padding: 0 18px 20px;
-  position: relative;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+  position: relative; z-index: 10;
+  display: flex; flex-direction: column; gap: 7px;
 }
-
 .news-item {
-  display: flex;
-  gap: 11px;
-  align-items: flex-start;
+  display: flex; gap: 11px; align-items: flex-start;
   background: var(--glass-inner);
   border: 1.5px solid rgba(255,255,255,0.9);
-  border-radius: 12px;
-  padding: 11px 13px;
-  position: relative;
-  overflow: hidden;
+  border-radius: 12px; padding: 11px 13px;
+  position: relative; overflow: hidden;
   transition:
     transform var(--t-fast) cubic-bezier(0.34,1.56,0.64,1),
     box-shadow var(--t-fast),
-    border-color var(--t-mid);
+    border-color var(--t-mid),
+    opacity var(--t-slow);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.03), 0 0 0 0 rgba(255,170,178,0);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.03);
   will-change: transform;
 }
-
-/* scanning highlight overlay */
 .news-item::before {
   content: '';
-  position: absolute;
-  left: -100%; top: 0;
+  position: absolute; left: -100%; top: 0;
   width: 100%; height: 100%;
   background: linear-gradient(90deg,
     transparent 0%,
@@ -605,41 +558,28 @@ body::before {
     rgba(96,212,200,0.1) 60%,
     transparent 100%
   );
-  pointer-events: none;
-  opacity: 0;
+  pointer-events: none; opacity: 0;
   transition: opacity var(--t-mid);
 }
-/* scan accent bar */
 .news-item::after {
   content: '';
-  position: absolute;
-  left: 0; top: 0;
+  position: absolute; left: 0; top: 0;
   width: 3px; height: 100%;
   background: transparent;
   border-radius: 2px 0 0 2px;
   transition: background var(--t-mid);
 }
-
-/* processing state for individual news items */
-.news-item.processing-scan::before {
-  animation: scan-sweep 1.4s ease-in-out;
-}
-.news-item.processing-scan::after {
-  background: var(--teal);
-}
+.news-item.processing-scan::before { animation: scan-sweep 1.4s ease-in-out; }
+.news-item.processing-scan::after  { background: var(--teal); }
 .news-item.processing-scan {
   border-color: rgba(96,212,200,0.3);
-  box-shadow: 0 1px 12px rgba(96,212,200,0.12), 0 0 0 0 rgba(255,170,178,0);
+  box-shadow: 0 1px 12px rgba(96,212,200,0.12);
 }
-
 @keyframes scan-sweep {
   0%   { left: -100%; opacity: 1; }
-  100% { left: 100%; opacity: 0.3; }
+  100% { left: 100%;  opacity: 0.3; }
 }
-
-/* touch press states */
-.news-item:active,
-.news-item.pressed {
+.news-item:active, .news-item.pressed {
   transform: scale(0.975);
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
@@ -647,35 +587,19 @@ body::before {
   transform: scale(1.008);
   transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
 }
-
 .news-index {
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--pink);
-  min-width: 20px;
-  padding-top: 1px;
-  line-height: 1.4;
-  flex-shrink: 0;
+  font-size: 10px; font-weight: 700;
+  color: var(--pink); min-width: 20px;
+  padding-top: 1px; line-height: 1.4; flex-shrink: 0;
 }
-.news-content {
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--text);
-  flex: 1;
-}
-
-/* category tag */
+.news-content { font-size: 12.5px; line-height: 1.6; color: var(--text); flex: 1; }
 .news-tag {
   flex-shrink: 0;
   font-family: "JetBrains Mono", monospace;
-  font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  padding: 2px 7px;
-  border-radius: 100px;
-  text-transform: uppercase;
-  margin-top: 1px;
+  font-size: 7.5px; font-weight: 700;
+  letter-spacing: 1px; padding: 2px 7px;
+  border-radius: 100px; text-transform: uppercase; margin-top: 1px;
 }
 .tag-tech    { background: rgba(125,227,248,0.18); color: var(--blue-deep); }
 .tag-world   { background: rgba(96,212,200,0.15);  color: #2ba89e; }
@@ -688,82 +612,41 @@ body::before {
 ═══════════════════════════════════════════════ */
 .pagination {
   padding: 0 18px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  position: relative;
-  z-index: 10;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  position: relative; z-index: 10;
 }
 .page-btn {
-  width: 34px; height: 34px;
-  border-radius: 50%;
+  width: 34px; height: 34px; border-radius: 50%;
   border: 1.5px solid rgba(255,170,178,0.35);
   background: var(--glass-inner);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; overflow: hidden;
   transition:
     transform var(--t-fast) cubic-bezier(0.34,1.56,0.64,1),
-    box-shadow var(--t-fast),
-    border-color var(--t-mid),
-    opacity var(--t-mid);
+    box-shadow var(--t-fast), border-color var(--t-mid), opacity var(--t-mid);
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
 }
-.page-btn svg {
-  width: 14px; height: 14px;
-  fill: var(--pink-dark);
-  pointer-events: none;
-}
-.page-btn:active, .page-btn.pressed {
-  transform: scale(0.88);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-.page-btn.released {
-  transform: scale(1.1);
-  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1);
-}
-.page-btn.disabled {
-  opacity: 0.28;
-  pointer-events: none;
-}
-.page-dots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  justify-content: center;
-}
+.page-btn svg { width: 14px; height: 14px; fill: var(--pink-dark); pointer-events: none; }
+.page-btn:active, .page-btn.pressed { transform: scale(0.88); box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.page-btn.released { transform: scale(1.1); transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+.page-btn.disabled { opacity: 0.28; pointer-events: none; }
+.page-dots { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; }
 .page-dot {
-  height: 6px;
-  width: 6px;
-  border-radius: 100px;
+  height: 6px; width: 6px; border-radius: 100px;
   background: rgba(186,200,216,0.5);
   transition: background var(--t-mid), width var(--t-mid), box-shadow var(--t-mid);
   cursor: default;
 }
-.page-dot.active {
-  background: var(--pink);
-  width: 18px;
-  box-shadow: 0 0 6px rgba(255,142,153,0.4);
-}
+.page-dot.active { background: var(--pink); width: 18px; box-shadow: 0 0 6px rgba(255,142,153,0.4); }
 .page-label {
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  min-width: 44px;
-  text-align: center;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 1.5px; color: var(--text-faint);
+  white-space: nowrap; min-width: 44px; text-align: center;
 }
-/* Page-turn animations */
-.news-list.exit-prev { animation: exitPrev 0.2s cubic-bezier(0.4,0,1,1) forwards; }
-.news-list.exit-next { animation: exitNext 0.2s cubic-bezier(0.4,0,1,1) forwards; }
+.news-list.exit-prev  { animation: exitPrev  0.2s cubic-bezier(0.4,0,1,1) forwards; }
+.news-list.exit-next  { animation: exitNext  0.2s cubic-bezier(0.4,0,1,1) forwards; }
 .news-list.enter-prev { animation: enterPrev 0.28s cubic-bezier(0,0,0.2,1) forwards; }
 .news-list.enter-next { animation: enterNext 0.28s cubic-bezier(0,0,0.2,1) forwards; }
 @keyframes exitNext  { to { opacity: 0; transform: translateX(-22px); } }
@@ -772,233 +655,157 @@ body::before {
 @keyframes enterPrev { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
 
 /* ═══════════════════════════════════════════════
-   FOOTER NAV BAR
+   FOOTER NAV
 ═══════════════════════════════════════════════ */
 .footer-nav {
   padding: 10px 18px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: flex; justify-content: space-between; align-items: center;
   border-top: 1px solid rgba(186,200,216,0.2);
-  position: relative;
-  z-index: 10;
+  position: relative; z-index: 10;
 }
-
 .nav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  cursor: default;
-  pointer-events: none;
-  padding: 4px 8px;
-  border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: default; pointer-events: none;
+  padding: 4px 8px; border-radius: 10px;
   -webkit-tap-highlight-color: transparent;
 }
-.nav-btn.pressed,
-.nav-btn.released,
-.nav-btn:active {
-  transform: none;
-  opacity: 1;
-}
-.nav-icon {
-  width: 22px; height: 22px;
-  fill: var(--text-faint);
-  transition: fill var(--t-fast);
-}
-.nav-btn.active .nav-icon { fill: var(--pink-dark); }
+.nav-icon { width: 22px; height: 22px; fill: var(--text-faint); transition: fill var(--t-fast); }
+.nav-btn.active .nav-icon  { fill: var(--pink-dark); }
 .nav-label {
   font-family: "JetBrains Mono", monospace;
-  font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  transition: color var(--t-fast);
+  font-size: 7.5px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--text-faint); transition: color var(--t-fast);
 }
 .nav-btn.active .nav-label { color: var(--pink-dark); }
-
-/* ── nav active pip ── */
-.nav-btn.active {
-  position: relative;
-}
+.nav-btn.active { position: relative; }
 .nav-btn.active::after {
   content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px; height: 4px;
-  background: var(--pink);
-  border-radius: 50%;
+  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; background: var(--pink); border-radius: 50%;
 }
 
 /* ═══════════════════════════════════════════════
    LOADING SCREEN
 ═══════════════════════════════════════════════ */
 .loading-screen {
-  position: absolute;
-  inset: 0;
-  border-radius: 22px;
+  position: absolute; inset: 0; border-radius: 22px;
   background: rgba(255,255,255,0.96);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 500;
-  gap: 16px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 500; gap: 16px;
   transition: opacity 0.5s ease;
 }
-.loading-screen.done {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.load-ring-wrap {
-  position: relative;
-  width: 54px; height: 54px;
-}
+.loading-screen.done { opacity: 0; pointer-events: none; }
+.load-ring-wrap { position: relative; width: 54px; height: 54px; }
 .load-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
+  position: absolute; inset: 0; border-radius: 50%;
   border: 2.5px solid transparent;
   border-top-color: var(--pink);
   animation: spin 1s linear infinite;
 }
-.load-ring-2 {
-  inset: 6px;
-  border-top-color: var(--blue);
-  animation: spin 1.4s linear infinite reverse;
-}
+.load-ring-2 { inset: 6px; border-top-color: var(--blue); animation: spin 1.4s linear infinite reverse; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .load-center {
-  position: absolute;
-  inset: 14px;
+  position: absolute; inset: 14px;
   background: linear-gradient(135deg, var(--pink-light) 0%, rgba(220,244,255,0.9) 100%);
   border-radius: 50%;
 }
-
 .load-text {
   font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
   color: var(--text-light);
 }
-.load-dots::after {
-  content: '';
-  animation: dots 1.2s steps(4, end) infinite;
-}
+.load-dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
 @keyframes dots {
-  0%  { content: ''; }
-  25% { content: '.'; }
-  50% { content: '..'; }
-  75% { content: '...'; }
+  0%  { content: ''; }   25% { content: '.'; }
+  50% { content: '..'; } 75% { content: '...'; }
 }
 
 /* ═══════════════════════════════════════════════
-   GLITCH EFFECT
+   GLITCH
 ═══════════════════════════════════════════════ */
 .glitch-active {
   animation: glitch 0.14s cubic-bezier(0.25,0.46,0.45,0.94);
-  filter: hue-rotate(12deg) contrast(1.05);
+  filter: hue-rotate(12deg) contrast(1.05) !important;
 }
 @keyframes glitch {
   0%   { clip-path: inset(20% 0 78% 0); transform: translate(-1px, 0.5px) scale(var(--breath-scale)); }
   25%  { clip-path: inset(60% 0 14% 0); transform: translate(1px, -0.5px) scale(var(--breath-scale)); }
   50%  { clip-path: inset(40% 0 50% 0); transform: translate(-1px, 1px) scale(var(--breath-scale)); }
-  75%  { clip-path: inset(75% 0 10% 0); transform: translate(0.5px, -0.5px) scale(var(--breath-scale)); }
+  75%  { clip-path: inset(75% 0 10% 0); transform: translate(0.5px,-0.5px) scale(var(--breath-scale)); }
   100% { clip-path: inset(0 0 0 0);     transform: translate(0) scale(var(--breath-scale)); }
 }
 
 /* ═══════════════════════════════════════════════
-   REVEAL ANIMATION
+   REVEAL
 ═══════════════════════════════════════════════ */
 .reveal-item {
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 0.4s ease, transform 0.4s ease;
 }
-.reveal-item.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+.reveal-item.visible { opacity: 1; transform: translateY(0); }
 
 /* ═══════════════════════════════════════════════
-   TOUCH RIPPLE HELPER
+   TOUCH RIPPLE
 ═══════════════════════════════════════════════ */
 .ripple {
-  position: absolute;
-  border-radius: 50%;
+  position: absolute; border-radius: 50%;
   background: rgba(255,170,178,0.2);
   transform: scale(0);
   animation: ripple-anim 0.35s ease-out forwards;
   pointer-events: none;
 }
-@keyframes ripple-anim {
-  to { transform: scale(2.5); opacity: 0; }
-}
+@keyframes ripple-anim { to { transform: scale(2.5); opacity: 0; } }
 
 /* ═══════════════════════════════════════════════
-   CLOCK AREA
+   CLOCK
 ═══════════════════════════════════════════════ */
 .clock-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: flex; align-items: center; gap: 6px;
   padding: 0 18px 10px;
-  position: relative;
-  z-index: 10;
+  position: relative; z-index: 10;
 }
 .clock-time {
   font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-light);
-  letter-spacing: 1.5px;
+  font-size: 11px; font-weight: 700;
+  color: var(--text-light); letter-spacing: 1.5px;
 }
 .clock-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--teal);
-  opacity: 0.7;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--teal); opacity: 0.7;
   animation: pulse-dot 2s ease-in-out infinite;
 }
 @keyframes pulse-dot {
   0%, 100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.2); }
+  50%       { opacity: 1;   transform: scale(1.2); }
 }
 .clock-sep {
-  flex: 1;
-  height: 1px;
+  flex: 1; height: 1px;
   background: linear-gradient(90deg, rgba(186,200,216,0.3) 0%, transparent 100%);
 }
 .online-badge {
   font-family: "JetBrains Mono", monospace;
-  font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--teal);
-  background: rgba(96,212,200,0.1);
-  padding: 2px 8px;
-  border-radius: 100px;
+  font-size: 7.5px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--teal); background: rgba(96,212,200,0.1);
+  padding: 2px 8px; border-radius: 100px;
 }
 </style>
 </head>
 <body>
+
+<!-- Background breath saturation overlay -->
+<div id="bg-breath-overlay"></div>
 
 <!-- Side strips -->
 <div class="side-strip side-strip-l">SCHALE INTEL · TACTICAL BRIEF · KIVOTOS</div>
 <div class="side-strip side-strip-r">AUTHORIZED · SENSEI ONLY · CONFIDENTIAL</div>
 
 <!-- Main Terminal -->
-<div class="terminal state-loading" id="terminal">
-
-  <!-- Scanning lines & noise via ::before ::after -->
+<div class="terminal state-loading" id="terminal" data-activity="normal">
 
   <!-- Loading screen -->
   <div class="loading-screen" id="loading-screen">
@@ -1013,7 +820,7 @@ body::before {
   <!-- State badge -->
   <div class="state-badge idle" id="state-badge">IDLE</div>
 
-  <!-- ── HEADER ── -->
+  <!-- HEADER -->
   <div class="header reveal-item">
     <div class="title-block">
       <h1>早報</h1>
@@ -1031,7 +838,7 @@ body::before {
     </div>
   </div>
 
-  <!-- ── CLOCK ROW ── -->
+  <!-- CLOCK ROW -->
   <div class="clock-row reveal-item" style="transition-delay:0.05s">
     <div class="clock-time" id="clock-time">00:00</div>
     <div class="clock-dot"></div>
@@ -1039,7 +846,7 @@ body::before {
     <div class="online-badge">ONLINE</div>
   </div>
 
-  <!-- ── WEIYU / INTEL DECODER ── -->
+  <!-- WEIYU / INTEL DECODER -->
   <div class="weiyu-wrap reveal-item" style="transition-delay:0.1s">
     <div class="weiyu-card" id="weiyu-card">
       <div class="weiyu-label" id="weiyu-label">MomoTalk · AI</div>
@@ -1047,7 +854,7 @@ body::before {
     </div>
   </div>
 
-  <!-- ── VOICE PLAYER ── -->
+  <!-- VOICE PLAYER -->
   <div class="player-section reveal-item" style="transition-delay:0.15s" id="audio-wrapper">
     <div class="player-card">
       <div class="player-row">
@@ -1075,7 +882,7 @@ body::before {
     </div>
   </div>
 
-  <!-- ── NEWS LIST ── -->
+  <!-- NEWS SECTION -->
   <div class="section-head reveal-item" style="transition-delay:0.2s">
     <div class="section-label">Intelligence Report</div>
     <div class="section-line"></div>
@@ -1084,7 +891,7 @@ body::before {
 
   <ul class="news-list reveal-item" id="news-list" style="transition-delay:0.25s"></ul>
 
-  <!-- ── PAGINATION ── -->
+  <!-- PAGINATION -->
   <div class="pagination reveal-item" id="pagination" style="transition-delay:0.28s">
     <button class="page-btn disabled" id="page-prev" aria-label="上一页">
       <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
@@ -1096,21 +903,21 @@ body::before {
     </button>
   </div>
 
-  <!-- ── FOOTER NAV ── -->
+  <!-- FOOTER NAV -->
   <div class="footer-nav reveal-item" style="transition-delay:0.3s">
-    <div class="nav-btn active" id="nav-home">
+    <div class="nav-btn active">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
       <div class="nav-label">早報</div>
     </div>
-    <div class="nav-btn" id="nav-intel">
+    <div class="nav-btn">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
       <div class="nav-label">情報</div>
     </div>
-    <div class="nav-btn" id="nav-archive">
+    <div class="nav-btn">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.09 15.91 0 13.36 0c-1.3 0-2.51.52-3.36 1.36L9 2.36 7.99 1.35C7.14.51 5.94 0 4.64 0 2.09 0 0 2.09 0 4.64c0 .48.1.92.18 1.36H0v2h20V6zm-7.82-4c.66 0 1.29.26 1.76.73l.73.73H10.34l.72-.72C11.53 2.26 12.16 2 12.18 2zM4 8v13h16V8H4zm8 9l-4-4h2.5v-4h3v4H16l-4 4z"/></svg>
       <div class="nav-label">歸檔</div>
     </div>
-    <div class="nav-btn" id="nav-settings">
+    <div class="nav-btn">
       <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.6-.22l-2.39.96a7.15 7.15 0 00-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.488.488 0 00-.6.22L2.74 8.87a.478.478 0 00.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.48.48 0 00-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       <div class="nav-label">設定</div>
     </div>
@@ -1118,26 +925,33 @@ body::before {
 
 </div><!-- .terminal -->
 
-<!-- Hidden audio element -->
 <audio id="audio-source" preload="metadata" crossorigin="anonymous"></audio>
 
 <script>
 /* ═══════════════════════════════════════════════════════════
-   SCHALE INTELLIGENCE TERMINAL v2
-   State Machine: IDLE | LOADING | SPEAKING | PROCESSING | STANDBY
-   "有生命的 UI" — 状态驱动的生命感系统
+   SCHALE INTELLIGENCE TERMINAL  v3
+   "系统化生命" — Systematic Life
+   
+   Architecture:
+   ┌─────────────────────────────────────────────────┐
+   │  FSM  →  BreathEngine  →  NeuralReflex          │
+   │       →  LowActivity   →  SignalRhythm           │
+   │       →  ScanlineSpeed →  VizLoop               │
+   └─────────────────────────────────────────────────┘
+   
+   States: IDLE | LOADING | SPEAKING | PROCESSING | STANDBY
 ═══════════════════════════════════════════════════════════ */
 
-/* ── CONFIG ── */
 const CONFIG = {
-  api: './data.json',
-  cacheKey: 'schale_intel_v2',
-  standbyDelay: 60000,   // 60s without interaction → STANDBY
-  idleNudgeMin: 40000,   // 40s
-  idleNudgeMax: 90000,   // 90s
+  api:            './data.json',
+  cacheKey:       'schale_intel_v3',
+  standbyDelay:   60000,    // 60s → STANDBY
+  lowActivityMs:  5000,     // 5s inactivity → low-activity dimming
+  idleNudgeMin:   40000,
+  idleNudgeMax:   90000,
 };
 
-/* ── DEMO DATA (fallback when no API) ── */
+/* ── DEMO DATA ── */
 const DEMO = {
   date: new Date().toLocaleDateString('zh-CN', { month:'long', day:'numeric', weekday:'short' }),
   weiyu: '早上好，老师。今天的情报已就绪，请查阅。基沃托斯目前状态稳定，Schale 持续监测中。',
@@ -1157,66 +971,97 @@ const DEMO = {
 ═══════════════════════════════════════════════ */
 const FSM = (() => {
   let _state = 'LOADING';
-  let _listeners = [];
+  const _listeners = [];
 
   const STATES = ['IDLE','LOADING','SPEAKING','PROCESSING','STANDBY'];
+
+  /* Breathing parameters per state.
+     hz: cycles per second  |  depth: scale amplitude  |  shadowAmp: 0..1 */
   const BREATH = {
-    IDLE:       { hz: 1/8,   depth: 0.0025, shadowAmp: 0.7 },
-    LOADING:    { hz: 0,     depth: 0,      shadowAmp: 0   }, // paused
-    SPEAKING:   { hz: 1/5.5, depth: 0.003,  shadowAmp: 1.0 },
-    PROCESSING: { hz: 1/6.5, depth: 0.0022, shadowAmp: 0.9 },
-    STANDBY:    { hz: 1/12,  depth: 0.0015, shadowAmp: 0.4 },
+    IDLE:       { hz: 1/7,    depth: 0.0024, shadowAmp: 0.65 }, // ~7s cycle
+    LOADING:    { hz: 0,      depth: 0,      shadowAmp: 0    }, // suspended
+    SPEAKING:   { hz: 1/5.5,  depth: 0.0030, shadowAmp: 1.0  }, // faster
+    PROCESSING: { hz: 1/7,    depth: 0.0022, shadowAmp: 0.85 }, // pauses 1s
+    STANDBY:    { hz: 1/14,   depth: 0.0012, shadowAmp: 0.30 }, // very slow
   };
 
   return {
-    get state() { return _state; },
+    get state()     { return _state; },
     get breathCfg() { return BREATH[_state]; },
-    transition(newState) {
-      if (!STATES.includes(newState) || newState === _state) return;
+    transition(next) {
+      if (!STATES.includes(next) || next === _state) return;
       const prev = _state;
-      _state = newState;
-      _listeners.forEach(fn => fn(newState, prev));
+      _state = next;
+      _listeners.forEach(fn => fn(next, prev));
     },
     on(fn) { _listeners.push(fn); }
   };
 })();
 
 /* ═══════════════════════════════════════════════
-   BREATHING ENGINE
-   Runs via rAF, applies CSS vars to terminal
+   BREATH ENGINE
+   Runs on rAF — the heartbeat of the whole system
 ═══════════════════════════════════════════════ */
 const BreathEngine = (() => {
-  let _phase = 0;
-  let _raf = null;
-  let _lastT = null;
-  const el = () => document.getElementById('terminal');
+  let _phase    = 0;
+  let _raf      = null;
+  let _lastT    = null;
+  let _paused   = false;
+  let _pausedRaw = 0.5;
+
+  function getTerm() { return document.getElementById('terminal'); }
 
   function tick(t) {
     if (!_lastT) _lastT = t;
-    const dt = (t - _lastT) / 1000;
+    const dt = Math.min((t - _lastT) / 1000, 0.1); // cap prevents jumps on tab return
     _lastT = t;
 
-    const cfg = FSM.breathCfg;
-    if (cfg.hz > 0) {
+    const cfg  = FSM.breathCfg;
+    const term = getTerm();
+
+    if (!_paused && cfg.hz > 0) {
       _phase += dt * cfg.hz * Math.PI * 2;
     }
 
-    const raw  = (Math.sin(_phase) + 1) / 2; // 0..1
-    const breath = raw * cfg.depth;
-    const scale  = 1 + breath;
-    const shadowBloom = raw * cfg.shadowAmp;
+    const raw   = _paused ? _pausedRaw : (Math.sin(_phase) + 1) / 2; // 0..1
+    const isLow = term && term.dataset.activity === 'low';
+    const depthMult = isLow ? 0.45 : 1.0;
 
-    const term = el();
+    const scale       = 1 + raw * cfg.depth * depthMult;
+    const shadowBloom = raw * cfg.shadowAmp * (isLow ? 0.5 : 1.0);
+
     if (term) {
+      /* Scale */
       term.style.setProperty('--breath', raw.toFixed(4));
       term.style.setProperty('--breath-scale', scale.toFixed(5));
-      // Dynamic shadow
+      term.style.transform = `scale(${scale.toFixed(5)})`;
+
+      /* Dynamic shadow — respiration diffusion */
       term.style.boxShadow = [
-        `0 0 0 ${(shadowBloom * 7).toFixed(1)}px rgba(255,170,178,${(shadowBloom * 0.1).toFixed(3)})`,
+        `0 0 0 ${(shadowBloom * 7).toFixed(1)}px rgba(255,170,178,${(shadowBloom * 0.10).toFixed(3)})`,
         `0 16px 48px rgba(255,130,148,${(0.12 + shadowBloom * 0.06).toFixed(3)})`,
         `0 4px 16px rgba(125,227,248,${(0.08 + shadowBloom * 0.06).toFixed(3)})`,
         '0 1px 3px rgba(0,0,0,0.04)',
       ].join(',');
+
+      /* Backdrop saturation breathing: 130%→145% range */
+      const bfSat = (130 + raw * 15).toFixed(0);
+      term.style.backdropFilter         = `blur(28px) saturate(${bfSat}%)`;
+      term.style.webkitBackdropFilter   = `blur(28px) saturate(${bfSat}%)`;
+
+      /* Composite filter: state × neural × breath-saturation */
+      const stateBright  = parseFloat(term.style.getPropertyValue('--state-bright')  || '1');
+      const stateSat     = parseFloat(term.style.getPropertyValue('--state-sat')      || '1');
+      const neuralBright = parseFloat(term.style.getPropertyValue('--neural-bright')  || '1');
+      const breathSat    = 1 + raw * 0.018; // ±1.8% saturation oscillation
+      term.style.filter  = `brightness(${(stateBright * neuralBright).toFixed(4)}) saturate(${(stateSat * breathSat).toFixed(3)})`;
+    }
+
+    /* Background overlay — warmth breathes with system */
+    const overlay = document.getElementById('bg-breath-overlay');
+    if (overlay) {
+      const oAmp = isLow ? 0.03 : 0.06;
+      overlay.style.opacity = (0.035 + raw * oAmp).toFixed(3);
     }
 
     _raf = requestAnimationFrame(tick);
@@ -1229,41 +1074,55 @@ const BreathEngine = (() => {
     },
     stop() {
       if (_raf) { cancelAnimationFrame(_raf); _raf = null; _lastT = null; }
+    },
+    /* Processing: hold breath 1s then resume */
+    pauseFor(ms) {
+      _pausedRaw = (Math.sin(_phase) + 1) / 2;
+      _paused = true;
+      setTimeout(() => { _paused = false; }, ms);
     }
   };
 })();
 
 /* ═══════════════════════════════════════════════
    STATE REACTIONS
-   Each state change drives UI updates
+   All component updates triggered by FSM transitions
 ═══════════════════════════════════════════════ */
 FSM.on((state, prev) => {
-  const terminal  = document.getElementById('terminal');
-  const badge     = document.getElementById('state-badge');
-  const vcore     = document.getElementById('voice-core');
-  const vcoreWrap = document.querySelector('.voice-core-wrap');
-  const wcard     = document.getElementById('weiyu-card');
-  const wlabel    = document.getElementById('weiyu-label');
-  const pstatus   = document.getElementById('player-status');
+  const term    = document.getElementById('terminal');
+  const badge   = document.getElementById('state-badge');
+  const vcore   = document.getElementById('voice-core');
+  const vwrap   = document.querySelector('.voice-core-wrap');
+  const wcard   = document.getElementById('weiyu-card');
+  const wlabel  = document.getElementById('weiyu-label');
+  const pstatus = document.getElementById('player-status');
 
-  /* remove all state classes from terminal */
-  terminal.classList.remove('state-idle','state-loading','state-speaking','state-processing','state-standby');
-  terminal.classList.add(`state-${state.toLowerCase()}`);
+  /* Terminal state class */
+  term.classList.remove('state-idle','state-loading','state-speaking','state-processing','state-standby');
+  term.classList.add(`state-${state.toLowerCase()}`);
 
-  /* badge */
-  badge.className = `state-badge ${state.toLowerCase()}`;
+  /* State filter vars — read by BreathEngine */
+  const FILTERS = {
+    IDLE:       { bright: 1.00, sat: 1.00 },
+    LOADING:    { bright: 0.92, sat: 0.85 },
+    SPEAKING:   { bright: 1.00, sat: 1.00 },
+    PROCESSING: { bright: 1.00, sat: 1.00 },
+    STANDBY:    { bright: 0.97, sat: 0.92 },
+  };
+  const f = FILTERS[state] || FILTERS.IDLE;
+  term.style.setProperty('--state-bright', f.bright);
+  term.style.setProperty('--state-sat',    f.sat);
+
+  /* Badge */
+  badge.className  = `state-badge ${state.toLowerCase()}`;
   badge.textContent = state;
 
-  /* voice core class */
-  vcore.classList.remove('speaking','processing');
-  vcoreWrap && vcoreWrap.classList.remove('speaking','processing');
-
-  /* weiyu card */
+  /* Clean previous component classes */
+  vcore.classList.remove('speaking', 'processing');
+  vwrap && vwrap.classList.remove('speaking', 'processing');
   wcard.classList.remove('speaking');
   wlabel.classList.remove('speaking');
-
-  /* player status */
-  pstatus.classList.remove('speaking','processing');
+  pstatus.classList.remove('speaking', 'processing');
 
   switch(state) {
     case 'LOADING':
@@ -1273,92 +1132,250 @@ FSM.on((state, prev) => {
     case 'IDLE':
       BreathEngine.start();
       pstatus.textContent = 'READY';
+      SignalRhythm.stopSpeaking();
+      SignalRhythm.startIdle();
       break;
 
     case 'SPEAKING':
       BreathEngine.start();
       vcore.classList.add('speaking');
-      vcoreWrap.classList.add('speaking');
+      vwrap && vwrap.classList.add('speaking');
       wcard.classList.add('speaking');
       wlabel.classList.add('speaking');
       pstatus.classList.add('speaking');
       pstatus.textContent = 'BROADCASTING';
+      SignalRhythm.stopIdle();
+      SignalRhythm.startSpeaking();
       break;
 
     case 'PROCESSING':
       BreathEngine.start();
+      BreathEngine.pauseFor(1000); // hold breath 1s
       vcore.classList.add('processing');
-      vcoreWrap.classList.add('processing');
+      vwrap && vwrap.classList.add('processing');
       pstatus.classList.add('processing');
       pstatus.textContent = 'PROCESSING';
-      triggerSignalStorm();
+      SignalRhythm.stopSpeaking();
+      SignalRhythm.triggerStorm();
       break;
 
     case 'STANDBY':
       BreathEngine.start();
       pstatus.textContent = 'STANDBY';
+      SignalRhythm.stopSpeaking();
+      SignalRhythm.stopIdle();
       break;
   }
 });
 
 /* ═══════════════════════════════════════════════
-   SIGNAL METER
+   NEURAL REFLEX
+   touchstart: +1% brightness immediately
+   touchend:   80ms delay to recover
+   Mimics a nervous system's touch response
 ═══════════════════════════════════════════════ */
-let _signalBase = [0,1,1,1,1]; // which bars are normally active
-let _signalInterval = null;
-let _signalStorm = false;
+const NeuralReflex = (() => {
+  let _timer = null;
 
-function updateSignalBars(overridePattern) {
-  const bars = document.querySelectorAll('.signal-bar');
-  bars.forEach((b, i) => {
-    b.classList.remove('active','processing-pulse');
-    if (overridePattern) {
-      if (overridePattern[i]) b.classList.add(FSM.state === 'PROCESSING' ? 'processing-pulse' : 'active');
-    } else {
-      if (_signalBase[i]) b.classList.add('active');
-    }
-  });
-}
+  function activate() {
+    clearTimeout(_timer);
+    const term = document.getElementById('terminal');
+    if (term) term.style.setProperty('--neural-bright', '1.010');
+  }
+  function release() {
+    clearTimeout(_timer);
+    _timer = setTimeout(() => {
+      const term = document.getElementById('terminal');
+      if (term) term.style.setProperty('--neural-bright', '1.000');
+    }, 80);
+  }
 
-function triggerSignalStorm() {
-  if (_signalStorm) return;
-  _signalStorm = true;
-  let tick = 0;
-  const storm = setInterval(() => {
-    if (FSM.state !== 'PROCESSING') {
-      clearInterval(storm);
-      _signalStorm = false;
-      updateSignalBars(_signalBase);
-      return;
+  return {
+    bind() {
+      const term = document.getElementById('terminal');
+      if (!term) return;
+      term.addEventListener('touchstart',  activate, { passive: true });
+      term.addEventListener('touchend',    release,  { passive: true });
+      term.addEventListener('touchcancel', release,  { passive: true });
+      term.addEventListener('mousedown',   activate, { passive: true });
+      term.addEventListener('mouseup',     release,  { passive: true });
+      term.addEventListener('mouseleave',  release,  { passive: true });
     }
-    const pat = [0,0,0,0,0].map(() => Math.random() > 0.35 ? 1 : 0);
-    updateSignalBars(pat);
-    tick++;
-    if (tick > 20) {
-      clearInterval(storm);
-      _signalStorm = false;
-      updateSignalBars(_signalBase);
-    }
-  }, 180);
-}
+  };
+})();
 
-function startClockSignal() {
-  setInterval(() => {
-    const now = new Date();
-    const el = document.getElementById('clock-time');
-    if (el) {
-      el.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+/* ═══════════════════════════════════════════════
+   LOW ACTIVITY SYSTEM
+   5s inactivity → subtle dimming within IDLE
+   Any interaction → immediate recovery
+═══════════════════════════════════════════════ */
+const LowActivity = (() => {
+  let _timer = null;
+  let _active = false;
+
+  function enter() {
+    if (_active || FSM.state !== 'IDLE') return;
+    _active = true;
+    const term = document.getElementById('terminal');
+    if (term) term.dataset.activity = 'low';
+  }
+  function exit() {
+    if (!_active) return;
+    _active = false;
+    const term = document.getElementById('terminal');
+    if (term) term.dataset.activity = 'normal';
+  }
+  function reset() {
+    exit();
+    clearTimeout(_timer);
+    if (FSM.state === 'IDLE') {
+      _timer = setTimeout(enter, CONFIG.lowActivityMs);
     }
-    if (FSM.state === 'IDLE' || FSM.state === 'STANDBY') {
-      // gentle random bar flicker
-      const bars = document.querySelectorAll('.signal-bar');
-      bars.forEach((b, i) => {
-        if (i < 1) return; // keep first bar always off
-        if (Math.random() > 0.75) b.classList.toggle('active');
-        else if (_signalBase[i]) b.classList.add('active');
+  }
+
+  return {
+    reset,
+    exit,
+    init() {
+      ['touchstart','click','keydown','mousemove','scroll'].forEach(evt => {
+        document.addEventListener(evt, reset, { passive: true });
       });
     }
-  }, 1000);
+  };
+})();
+
+/* ═══════════════════════════════════════════════
+   SIGNAL RHYTHM
+   IDLE:       gentle random flicker (clock-driven)
+   SPEAKING:   organic beat — sine-wave rhythm on bars + heights
+   PROCESSING: rapid random storm
+═══════════════════════════════════════════════ */
+const SignalRhythm = (() => {
+  const BASE_HEIGHTS = [30, 55, 75, 90, 100]; // default %
+  let _speakTimer = null;
+  let _idleTimer  = null;
+  let _stormTimer = null;
+  let _stormRuns  = 0;
+
+  function getBars() { return document.querySelectorAll('.signal-bar'); }
+
+  function restoreHeights() {
+    getBars().forEach((b, i) => {
+      b.style.height = '';
+      b.classList.remove('processing-pulse');
+    });
+  }
+
+  function startSpeaking() {
+    if (_speakTimer) return;
+    let t = 0;
+    _speakTimer = setInterval(() => {
+      if (FSM.state !== 'SPEAKING') { stopSpeaking(); return; }
+      t += 0.22;
+      /* Dual oscillator: main breath + accent flutter */
+      const primary  = (Math.sin(t) + 1) / 2;                    // 0..1 slow
+      const flutter  = (Math.sin(t * 2.8 + 1) + 1) / 2 * 0.35;  // accent
+      const energy   = primary * 0.65 + flutter;                  // 0..1 range
+      const activeN  = Math.max(2, Math.round(energy * 5));
+
+      getBars().forEach((b, i) => {
+        b.classList.remove('active', 'processing-pulse');
+        if (i < activeN) b.classList.add('active');
+        /* Height oscillation: ±8% of base */
+        const h = BASE_HEIGHTS[i] + Math.sin(t * (1.4 + i * 0.4)) * 8;
+        b.style.height = `${Math.max(18, Math.min(100, h)).toFixed(1)}%`;
+      });
+    }, 90);
+  }
+
+  function stopSpeaking() {
+    if (_speakTimer) { clearInterval(_speakTimer); _speakTimer = null; }
+    restoreHeights();
+    getBars().forEach(b => b.classList.remove('active'));
+    [0,1,2,3,4].forEach((_, i) => { if (i > 0) getBars()[i]?.classList.add('active'); });
+  }
+
+  function startIdle() {
+    if (_idleTimer) return;
+    _idleTimer = setInterval(() => {
+      if (FSM.state !== 'IDLE' && FSM.state !== 'STANDBY') { stopIdle(); return; }
+      const bars = getBars();
+      bars.forEach((b, i) => {
+        if (i === 0) return;
+        if (Math.random() > 0.72) b.classList.toggle('active');
+        else if (i > 0) b.classList.add('active');
+      });
+    }, 1000);
+  }
+
+  function stopIdle() {
+    if (_idleTimer) { clearInterval(_idleTimer); _idleTimer = null; }
+  }
+
+  function triggerStorm() {
+    if (_stormTimer) return;
+    _stormRuns = 0;
+    _stormTimer = setInterval(() => {
+      if (FSM.state !== 'PROCESSING' || _stormRuns > 24) {
+        clearInterval(_stormTimer); _stormTimer = null;
+        restoreHeights();
+        getBars().forEach(b => b.classList.remove('processing-pulse'));
+        [0,1,2,3,4].forEach((_, i) => { if (i > 0) getBars()[i]?.classList.add('active'); });
+        return;
+      }
+      getBars().forEach((b) => {
+        b.classList.remove('active');
+        b.classList.toggle('processing-pulse', Math.random() > 0.4);
+        b.style.height = `${20 + Math.random() * 80}%`;
+      });
+      _stormRuns++;
+    }, 170);
+  }
+
+  return { startSpeaking, stopSpeaking, startIdle, stopIdle, triggerStorm };
+})();
+
+/* ═══════════════════════════════════════════════
+   IDLE NUDGE (periodic gentle reminder)
+═══════════════════════════════════════════════ */
+let _idleNudgeTimer  = null;
+let _standbyTimer    = null;
+
+function resetIdleTimers() {
+  if (_idleNudgeTimer)  clearTimeout(_idleNudgeTimer);
+  if (_standbyTimer)    clearTimeout(_standbyTimer);
+  if (FSM.state === 'STANDBY') FSM.transition('IDLE');
+
+  _idleNudgeTimer = setTimeout(() => {
+    if (FSM.state !== 'IDLE') return;
+    const core  = document.getElementById('voice-core');
+    const wcard = document.getElementById('weiyu-card');
+    const wlbl  = document.getElementById('weiyu-label');
+    if (core)  { core.classList.add('idle-pulse-anim'); setTimeout(() => core.classList.remove('idle-pulse-anim'), 1000); }
+    if (wcard) { wcard.classList.add('idle-nudge'); wlbl.classList.add('idle-badge'); setTimeout(() => { wcard.classList.remove('idle-nudge'); wlbl.classList.remove('idle-badge'); }, 2000); }
+    resetIdleTimers();
+  }, CONFIG.idleNudgeMin + Math.random() * (CONFIG.idleNudgeMax - CONFIG.idleNudgeMin));
+
+  _standbyTimer = setTimeout(() => {
+    if (FSM.state === 'IDLE') FSM.transition('STANDBY');
+  }, CONFIG.standbyDelay);
+}
+
+['touchstart','click','keydown','mousemove'].forEach(evt => {
+  document.addEventListener(evt, resetIdleTimers, { passive: true });
+});
+
+/* ═══════════════════════════════════════════════
+   CLOCK
+═══════════════════════════════════════════════ */
+function startClock() {
+  function tick() {
+    const now = new Date();
+    const el  = document.getElementById('clock-time');
+    if (el) el.textContent = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  }
+  tick();
+  setInterval(tick, 1000);
 }
 
 /* ═══════════════════════════════════════════════
@@ -1367,39 +1384,33 @@ function startClockSignal() {
 function typeWriter(el, text, done) {
   el.innerHTML = '<span class="weiyu-cursor"></span>';
   let i = 0;
-  const speed = 38;
   const cursor = el.querySelector('.weiyu-cursor');
   function step() {
     if (i <= text.length) {
       el.textContent = text.slice(0, i);
       el.appendChild(cursor);
       i++;
-      setTimeout(step, speed);
-    } else {
-      done && done();
-    }
+      setTimeout(step, 36);
+    } else { done && done(); }
   }
   step();
 }
 
 /* ═══════════════════════════════════════════════
-   TOUCH FEEDBACK SYSTEM
-   Mobile-first: touchstart / touchend
-   No hover as core interaction
+   TOUCH FEEDBACK
 ═══════════════════════════════════════════════ */
 function applyTouchFeedback(el) {
   let _pressing = false;
-  let _releaseTimer = null;
+  let _relTimer  = null;
 
   function press(e) {
     _pressing = true;
     el.classList.remove('released');
     el.classList.add('pressed');
-    // ripple
-    const rect = el.getBoundingClientRect();
+    const rect  = el.getBoundingClientRect();
     const touch = e.changedTouches ? e.changedTouches[0] : e;
-    const x = (touch.clientX - rect.left);
-    const y = (touch.clientY - rect.top);
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
     const size = Math.max(rect.width, rect.height);
     const r = document.createElement('div');
     r.className = 'ripple';
@@ -1407,22 +1418,20 @@ function applyTouchFeedback(el) {
     el.appendChild(r);
     setTimeout(() => r.remove(), 400);
   }
-
   function release() {
     if (!_pressing) return;
     _pressing = false;
     el.classList.remove('pressed');
     el.classList.add('released');
-    if (_releaseTimer) clearTimeout(_releaseTimer);
-    _releaseTimer = setTimeout(() => el.classList.remove('released'), 250);
+    if (_relTimer) clearTimeout(_relTimer);
+    _relTimer = setTimeout(() => el.classList.remove('released'), 250);
   }
 
-  el.addEventListener('touchstart', press, { passive: true });
-  el.addEventListener('touchend',   release, { passive: true });
+  el.addEventListener('touchstart',  press,   { passive: true });
+  el.addEventListener('touchend',    release, { passive: true });
   el.addEventListener('touchcancel', release, { passive: true });
-  // mouse fallback for desktop preview
-  el.addEventListener('mousedown', press, { passive: true });
-  el.addEventListener('mouseup',   release, { passive: true });
+  el.addEventListener('mousedown',   press,   { passive: true });
+  el.addEventListener('mouseup',     release, { passive: true });
 }
 
 /* ═══════════════════════════════════════════════
@@ -1443,22 +1452,20 @@ function initAudio() {
     const audio = document.getElementById('audio-source');
     _source = _audioCtx.createMediaElementSource(audio);
     _source.connect(_analyser);
-  } catch(e) {}
+  } catch(e) { console.warn('[Audio]', e); }
 }
 
 function startVizLoop() {
   if (!_analyser || _vizRaf) return;
-  const buf = new Uint8Array(_analyser.frequencyBinCount);
-  const fill = document.getElementById('progress-fill');
+  const buf  = new Uint8Array(_analyser.frequencyBinCount);
 
   function loop() {
     _analyser.getByteFrequencyData(buf);
-    // Use audio energy to modulate voice core glow
-    const energy = buf.slice(0,8).reduce((a,b) => a+b, 0) / (8 * 255);
+    const energy = buf.slice(0, 8).reduce((a,b) => a+b, 0) / (8 * 255);
     const core = document.getElementById('voice-core');
     if (core && FSM.state === 'SPEAKING') {
-      const glow = 4 + energy * 20;
-      const bloom = 4 + energy * 12;
+      const glow  = 4 + energy * 22;
+      const bloom = 4 + energy * 14;
       core.style.boxShadow = [
         `0 0 0 ${(3 + energy * 5).toFixed(1)}px rgba(255,170,178,${(0.2 + energy * 0.25).toFixed(2)})`,
         `0 0 ${glow.toFixed(1)}px rgba(255,142,153,${(0.2 + energy * 0.35).toFixed(2)})`,
@@ -1484,23 +1491,27 @@ function formatTime(s) {
 
 function togglePlay() {
   initAudio();
-  if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume().catch(()=>{});
+  if (_audioCtx?.state === 'suspended') _audioCtx.resume().catch(()=>{});
 
-  const audio = document.getElementById('audio-source');
+  const audio  = document.getElementById('audio-source');
   const playI  = document.getElementById('play-icon');
   const pauseI = document.getElementById('pause-icon');
 
   if (!audio.src || audio.src === window.location.href) {
-    // Demo: no audio loaded — simulate PROCESSING mode
-    if (FSM.state !== 'PROCESSING') {
-      FSM.transition('PROCESSING');
+    /* Demo mode: simulate state cycle */
+    if (FSM.state !== 'PROCESSING' && FSM.state !== 'SPEAKING') {
       playI.style.display  = 'none';
       pauseI.style.display = 'block';
+      FSM.transition('PROCESSING');
       triggerScanHighlight();
-      // auto-revert after demo
       setTimeout(() => {
         FSM.transition('SPEAKING');
-        setTimeout(() => FSM.transition('IDLE'), 4000);
+        setTimeout(() => {
+          FSM.transition('IDLE');
+          playI.style.display  = 'block';
+          pauseI.style.display = 'none';
+          clearScanHighlight();
+        }, 4000);
       }, 3000);
     } else {
       FSM.transition('IDLE');
@@ -1519,7 +1530,7 @@ function togglePlay() {
       pauseI.style.display = 'block';
       startVizLoop();
       triggerScanHighlight();
-    }).catch(() => {});
+    }).catch(()=>{});
   } else {
     audio.pause();
     FSM.transition('IDLE');
@@ -1531,10 +1542,9 @@ function togglePlay() {
 }
 
 /* ═══════════════════════════════════════════════
-   SCAN HIGHLIGHT (PROCESSING)
-   Progressive scan through news items
+   SCAN HIGHLIGHT
 ═══════════════════════════════════════════════ */
-let _scanIdx = 0;
+let _scanIdx   = 0;
 let _scanTimer = null;
 
 function triggerScanHighlight() {
@@ -1542,25 +1552,19 @@ function triggerScanHighlight() {
   if (!items.length) return;
   _scanIdx = 0;
   clearScanHighlight();
-  FSM.transition('PROCESSING');
 
-  function scanNext() {
+  function next() {
     if (_scanIdx >= items.length) {
-      setTimeout(() => {
-        clearScanHighlight();
-        if (FSM.state === 'PROCESSING') FSM.transition('SPEAKING');
-      }, 400);
+      setTimeout(() => { clearScanHighlight(); if (FSM.state === 'PROCESSING') FSM.transition('SPEAKING'); }, 400);
       return;
     }
-    // Remove prev
     if (_scanIdx > 0) items[_scanIdx - 1].classList.remove('processing-scan');
     items[_scanIdx].classList.add('processing-scan');
     _scanIdx++;
-    _scanTimer = setTimeout(scanNext, 700);
+    _scanTimer = setTimeout(next, 680);
   }
-  scanNext();
+  next();
 }
-
 function clearScanHighlight() {
   if (_scanTimer) { clearTimeout(_scanTimer); _scanTimer = null; }
   document.querySelectorAll('.news-item').forEach(el => el.classList.remove('processing-scan'));
@@ -1576,62 +1580,24 @@ function triggerGlitch() {
 }
 
 /* ═══════════════════════════════════════════════
-   IDLE NUDGE SYSTEM
-═══════════════════════════════════════════════ */
-let _idleTimer = null;
-let _standbyTimer = null;
-
-function resetIdleTimers() {
-  if (_idleTimer)    clearTimeout(_idleTimer);
-  if (_standbyTimer) clearTimeout(_standbyTimer);
-
-  if (FSM.state === 'STANDBY') FSM.transition('IDLE');
-
-  _idleTimer = setTimeout(() => {
-    if (FSM.state !== 'IDLE') return;
-    // nudge
-    const core  = document.getElementById('voice-core');
-    const wcard = document.getElementById('weiyu-card');
-    const wlabel = document.getElementById('weiyu-label');
-    if (core) { core.classList.add('idle-pulse-anim'); setTimeout(() => core.classList.remove('idle-pulse-anim'), 1000); }
-    if (wcard) { wcard.classList.add('idle-nudge'); wlabel.classList.add('idle-badge'); setTimeout(() => { wcard.classList.remove('idle-nudge'); wlabel.classList.remove('idle-badge'); }, 2000); }
-    // reschedule
-    resetIdleTimers();
-  }, CONFIG.idleNudgeMin + Math.random() * (CONFIG.idleNudgeMax - CONFIG.idleNudgeMin));
-
-  _standbyTimer = setTimeout(() => {
-    if (FSM.state === 'IDLE') FSM.transition('STANDBY');
-  }, CONFIG.standbyDelay);
-}
-
-['touchstart','click','keydown','mousemove'].forEach(evt => {
-  document.addEventListener(evt, resetIdleTimers, { passive: true });
-});
-
-/* ═══════════════════════════════════════════════
    AUDIO EVENTS
 ═══════════════════════════════════════════════ */
 (function bindAudioEvents() {
   const audio = document.getElementById('audio-source');
-
   audio.addEventListener('timeupdate', () => {
     const pct  = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
     const fill = document.getElementById('progress-fill');
     fill.style.width = pct + '%';
-    if (pct > 1) fill.classList.add('active'); else fill.classList.remove('active');
+    pct > 1 ? fill.classList.add('active') : fill.classList.remove('active');
     document.getElementById('time-current').textContent = formatTime(audio.currentTime);
     document.getElementById('time-total').textContent   = formatTime(audio.duration || 0);
   });
-
   audio.addEventListener('ended', () => {
     document.getElementById('play-icon').style.display  = 'block';
     document.getElementById('pause-icon').style.display = 'none';
     document.getElementById('progress-fill').style.width = '0%';
-    stopVizLoop();
-    clearScanHighlight();
-    FSM.transition('IDLE');
+    stopVizLoop(); clearScanHighlight(); FSM.transition('IDLE');
   });
-
   audio.addEventListener('error', () => {
     document.getElementById('audio-wrapper').style.display = 'none';
   });
@@ -1639,31 +1605,26 @@ function resetIdleTimers() {
 
 /* ═══════════════════════════════════════════════
    PAGINATOR
-   5 items/page · state-aware · animated transitions
 ═══════════════════════════════════════════════ */
 const Paginator = (() => {
   const PER_PAGE = 5;
-  let _data = [];
-  let _page = 0;   // zero-based
-  let _total = 0;
-  let _busy = false;
+  let _data = [], _page = 0, _busy = false;
 
   function totalPages() { return Math.ceil(_data.length / PER_PAGE); }
 
-  function buildItems(pageIdx, globalOffset) {
-    const list = document.getElementById('news-list');
+  function buildItems(pageIdx) {
+    const list  = document.getElementById('news-list');
     list.innerHTML = '';
     const slice = _data.slice(pageIdx * PER_PAGE, pageIdx * PER_PAGE + PER_PAGE);
     slice.forEach((item, i) => {
       const globalIdx = pageIdx * PER_PAGE + i;
       const li = document.createElement('li');
       li.className = 'news-item';
-      li.setAttribute('role', 'button');
+      li.setAttribute('role','button');
       li.innerHTML = `
         <div class="news-index">${String(globalIdx + 1).padStart(2,'0')}</div>
         <div class="news-content">${item.text}</div>
-        <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
-      `;
+        <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>`;
       applyTouchFeedback(li);
       li.addEventListener('click', () => {
         if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
@@ -1675,84 +1636,68 @@ const Paginator = (() => {
   }
 
   function updateControls() {
-    const pages = totalPages();
-    const prevBtn = document.getElementById('page-prev');
-    const nextBtn = document.getElementById('page-next');
-    const label   = document.getElementById('page-label');
-    const dotsEl  = document.getElementById('page-dots');
-
-    prevBtn.classList.toggle('disabled', _page === 0);
-    nextBtn.classList.toggle('disabled', _page >= pages - 1);
+    const pages  = totalPages();
+    const prev   = document.getElementById('page-prev');
+    const next   = document.getElementById('page-next');
+    const label  = document.getElementById('page-label');
+    const dots   = document.getElementById('page-dots');
+    prev.classList.toggle('disabled', _page === 0);
+    next.classList.toggle('disabled', _page >= pages - 1);
     label.textContent = `${_page + 1} / ${pages}`;
-
-    // Rebuild dots
-    dotsEl.innerHTML = '';
+    dots.innerHTML = '';
     for (let i = 0; i < pages; i++) {
       const d = document.createElement('div');
       d.className = 'page-dot' + (i === _page ? ' active' : '');
-      dotsEl.appendChild(d);
+      dots.appendChild(d);
     }
   }
 
-  function goTo(newPage, direction) {
+  function goTo(newPage, dir) {
     if (_busy) return;
     const pages = totalPages();
     if (newPage < 0 || newPage >= pages) return;
     _busy = true;
-
-    const list = document.getElementById('news-list');
-
-    // Exit animation
-    const exitCls = direction > 0 ? 'exit-next' : 'exit-prev';
+    const list    = document.getElementById('news-list');
+    const exitCls = dir > 0 ? 'exit-next' : 'exit-prev';
     list.classList.add(exitCls);
-
-    // Brief PROCESSING flash on terminal
-    if (FSM.state === 'IDLE' || FSM.state === 'STANDBY') {
-      const badge = document.getElementById('state-badge');
-      badge.textContent = 'PROCESSING';
-      badge.className = 'state-badge processing';
-    }
 
     setTimeout(() => {
       list.classList.remove(exitCls);
       _page = newPage;
       buildItems(_page);
       updateControls();
-
-      // Enter animation
-      const enterCls = direction > 0 ? 'enter-next' : 'enter-prev';
+      const enterCls = dir > 0 ? 'enter-next' : 'enter-prev';
       list.classList.add(enterCls);
       list.addEventListener('animationend', () => {
         list.classList.remove(enterCls);
         _busy = false;
-        // Restore badge
-        if (FSM.state === 'IDLE' || FSM.state === 'STANDBY') {
-          const badge = document.getElementById('state-badge');
-          badge.textContent = FSM.state;
-          badge.className = `state-badge ${FSM.state.toLowerCase()}`;
-        }
       }, { once: true });
     }, 200);
   }
 
-  const MOBILE_BP = 600;
-  function isMobile() {
-    return window.innerWidth < MOBILE_BP ||
-      /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  function isMobile() { return window.innerWidth < 600 || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }
+
+  function bindBtns() {
+    const prev = document.getElementById('page-prev');
+    const next = document.getElementById('page-next');
+    const np = prev.cloneNode(true), nn = next.cloneNode(true);
+    prev.replaceWith(np); next.replaceWith(nn);
+    applyTouchFeedback(np); applyTouchFeedback(nn);
+    np.addEventListener('click', () => goTo(_page - 1, -1));
+    nn.addEventListener('click', () => goTo(_page + 1, +1));
   }
 
-  function buildAllItems() {
+  function buildAll() {
     const list = document.getElementById('news-list');
     list.innerHTML = '';
     _data.forEach((item, i) => {
       const li = document.createElement('li');
       li.className = 'news-item';
-      li.setAttribute('role', 'button');
+      li.setAttribute('role','button');
       li.innerHTML = `
-        <div class="news-index">${String(i + 1).padStart(2,'0')}</div>
+        <div class="news-index">${String(i+1).padStart(2,'0')}</div>
         <div class="news-content">${item.text}</div>
-        <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>
-      `;
+        <div class="news-tag tag-${item.tag}">${item.tag.toUpperCase()}</div>`;
       applyTouchFeedback(li);
       li.addEventListener('click', () => {
         if (FSM.state === 'STANDBY' || FSM.state === 'LOADING') return;
@@ -1763,44 +1708,23 @@ const Paginator = (() => {
     });
   }
 
-  function bindPageBtns() {
-    const prevBtn = document.getElementById('page-prev');
-    const nextBtn = document.getElementById('page-next');
-    const newPrev = prevBtn.cloneNode(true);
-    const newNext = nextBtn.cloneNode(true);
-    prevBtn.replaceWith(newPrev);
-    nextBtn.replaceWith(newNext);
-    applyTouchFeedback(newPrev);
-    applyTouchFeedback(newNext);
-    newPrev.addEventListener('click', () => goTo(_page - 1, -1));
-    newNext.addEventListener('click', () => goTo(_page + 1, +1));
-  }
-
-  function init(data) {
-    _data = data;
-    _page = 0;
-    _busy = false;
-
-    if (isMobile()) {
-      // Mobile: paginated, 5 per page
-      const pages = totalPages();
-      document.getElementById('pagination').style.display = pages <= 1 ? 'none' : 'flex';
-      buildItems(0);
-      updateControls();
-      bindPageBtns();
-    } else {
-      // Desktop: show all at once, no pagination
-      document.getElementById('pagination').style.display = 'none';
-      buildAllItems();
-    }
-  }
-
-  // Re-evaluate layout on resize (e.g. browser window resize / devtools)
   let _resizeTimer = null;
   window.addEventListener('resize', () => {
     clearTimeout(_resizeTimer);
     _resizeTimer = setTimeout(() => { if (_data.length) init(_data); }, 250);
   });
+
+  function init(data) {
+    _data = data; _page = 0; _busy = false;
+    if (isMobile()) {
+      const pages = totalPages();
+      document.getElementById('pagination').style.display = pages <= 1 ? 'none' : 'flex';
+      buildItems(0); updateControls(); bindBtns();
+    } else {
+      document.getElementById('pagination').style.display = 'none';
+      buildAll();
+    }
+  }
 
   return { init };
 })();
@@ -1809,58 +1733,45 @@ const Paginator = (() => {
    RENDER UI
 ═══════════════════════════════════════════════ */
 function renderUI(data) {
-  /* date */
   const dateEl = document.getElementById('date-display');
   if (dateEl) dateEl.textContent = data.date || DEMO.date;
 
-  /* news — strip leading "1、" "2." etc. and auto-assign tags */
   const TAG_MAP = [
     { re: /科技|AI|芯片|机器人|大模型|电池|量子|航天|卫星|软件/, tag: 'tech' },
     { re: /财经|经济|股|基金|房|楼市|金融|市场|收入|月入|消费/, tag: 'finance' },
     { re: /健康|医|药|疫|病|研究|实验|临床/,                    tag: 'health' },
     { re: /科学|物理|化学|生物|天文|发现|突破/,                  tag: 'sci' },
   ];
-  function guessTag(text) {
-    for (const { re, tag } of TAG_MAP) if (re.test(text)) return tag;
-    return 'world';
-  }
+  function guessTag(t) { for (const { re, tag } of TAG_MAP) if (re.test(t)) return tag; return 'world'; }
 
-  const rawNews = data.news || [];
-  const newsData = rawNews.map(item => {
-    const str = typeof item === 'string' ? item : (item.text || '');
-    const clean = str.replace(/^\d+[、．.、]\s*/, '').trim();
+  const newsData = (data.news || []).map(item => {
+    const str   = typeof item === 'string' ? item : (item.text || '');
+    const clean = str.replace(/^\d+[、．.]\s*/, '').trim();
     return { text: clean, tag: guessTag(clean) };
   });
 
-  const list    = document.getElementById('news-list');
   const countEl = document.getElementById('news-count');
   if (countEl) countEl.textContent = `${newsData.length}件`;
 
-  /* ── Bootstrap Paginator ── */
   Paginator.init(newsData);
 
-  /* weiyu text — strip leading 【微语】 prefix if present */
   const weiyuEl = document.getElementById('weiyu-text');
   const txt = (data.weiyu || DEMO.weiyu).replace(/^【微语】\s*/, '');
   typeWriter(weiyuEl, txt, () => {});
 
-  /* audio */
   const audio     = document.getElementById('audio-source');
   const audioWrap = document.getElementById('audio-wrapper');
-  if (data.audio) {
-    audio.src = data.audio;
-    audioWrap.style.display = 'block';
-  }
+  if (data.audio) { audio.src = data.audio; audioWrap.style.display = 'block'; }
 
-  /* transition from LOADING → IDLE with reveal */
+  /* Dismiss loading screen */
   const loadScreen = document.getElementById('loading-screen');
   loadScreen.classList.add('done');
   setTimeout(() => { loadScreen.style.display = 'none'; }, 600);
 
   FSM.transition('IDLE');
   resetIdleTimers();
+  LowActivity.reset();
 
-  /* stagger-reveal items */
   document.querySelectorAll('.reveal-item').forEach((el, i) => {
     setTimeout(() => el.classList.add('visible'), 300 + i * 80);
   });
@@ -1870,37 +1781,39 @@ function renderUI(data) {
    INIT
 ═══════════════════════════════════════════════ */
 async function init() {
-  startClockSignal();
-
-  /* date now */
+  startClock();
   document.getElementById('date-display').textContent = DEMO.date;
 
-  /* bind play button */
+  /* Bind neural reflex (requires DOM) */
+  NeuralReflex.bind();
+  LowActivity.init();
+
+  /* Bind play button */
   const vcore = document.getElementById('voice-core');
   applyTouchFeedback(vcore);
   vcore.addEventListener('click', togglePlay);
 
-  /* try API, fallback to demo */
+  /* Start breath engine in loading state (holds but doesn't stop everything) */
+  BreathEngine.start();
+
+  /* Fetch data or fallback to demo */
   try {
     const cached = localStorage.getItem(CONFIG.cacheKey);
     if (cached) renderUI(JSON.parse(cached));
 
     const res  = await fetch(`${CONFIG.api}?t=${Date.now()}`);
-    if (!res.ok) throw new Error('API error');
+    if (!res.ok) throw new Error('API unavailable');
     const json = await res.json();
-    // Support both envelope format { success, data: {...} } and flat format
-    const d = (json.success !== undefined && json.data) ? json.data : (json.data || json);
+    const d    = (json.success !== undefined && json.data) ? json.data : (json.data || json);
     localStorage.setItem(CONFIG.cacheKey, JSON.stringify(d));
     renderUI(d);
   } catch(e) {
-    console.info('[Schale Terminal] data.json unavailable, using demo data.', e);
+    console.info('[Schale v3] Using demo data.', e);
     renderUI(DEMO);
   }
 }
 
-document.addEventListener('DOMContentLoaded', init);
-
-/* page visibility */
+/* Page visibility — pause life when tab hidden */
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     BreathEngine.stop();
@@ -1910,6 +1823,8 @@ document.addEventListener('visibilitychange', () => {
     if (FSM.state === 'SPEAKING') startVizLoop();
   }
 });
+
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
