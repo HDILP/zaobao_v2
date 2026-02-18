@@ -1596,10 +1596,16 @@ const FocusMode = (() => {
   }
 
   function bindItem(el) {
+    let holdTriggered = false;
+
     function startHold(x, y) {
       _startX = x; _startY = y;
+      holdTriggered = false;
       clearTimeout(_pressTimer);
-      _pressTimer = setTimeout(() => enter(el), HOLD_MS);
+      _pressTimer = setTimeout(() => {
+        holdTriggered = true;
+        enter(el);
+      }, HOLD_MS);
     }
     function cancelHold(x, y) {
       if (x !== undefined) {
@@ -1611,6 +1617,11 @@ const FocusMode = (() => {
     }
     function releaseHold() {
       clearTimeout(_pressTimer);
+      // Keep focus after successful long-press; do not instantly exit on finger/mouse release.
+      if (holdTriggered) {
+        holdTriggered = false;
+        return;
+      }
       // Tap (short press) — exit focus if currently in it, else do nothing special
       if (_focused && _targetEl !== el) exit();
       else if (_focused && _targetEl === el) {
