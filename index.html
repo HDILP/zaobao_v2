@@ -20,9 +20,9 @@
   --blue-deep:   #5ab0e8;
   --blue-glow:   rgba(125,227,248,0.3);
   --teal:        #60d4c8;
-  --text:        #4c5b70;
-  --text-light:  #8a9bb3;
-  --text-faint:  #bac8d8;
+  --text:        #41536b;
+  --text-light:  #8092ac;
+  --text-faint:  #b0bfd0;
   --glass:       rgba(255,255,255,0.91);
   --glass-inner: rgba(255,255,255,0.75);
   --noise:       0.022;
@@ -57,6 +57,9 @@ html, body {
 body {
   font-family: "M PLUS Rounded 1c", "Hiragino Sans", "Yu Gothic", sans-serif;
   color: var(--text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background: #f4f8ff;
   min-height: 100dvh;
   display: flex;
@@ -813,7 +816,7 @@ body.focus-mode #focus-veil {
   letter-spacing: 2px; text-transform: uppercase;
   color: var(--teal); margin-bottom: 5px;
 }
-.summary-text { font-size: 11.5px; line-height: 1.58; color: #53657e; }
+.summary-text { font-size: 11.5px; line-height: 1.58; color: #4d6078; font-weight: 550; }
 .summary-classify {
   display: inline-block; margin-bottom: 4px;
   font-family: "JetBrains Mono", monospace;
@@ -828,7 +831,14 @@ body.focus-mode #focus-veil {
   font-size: 10px; font-weight: 700; color: var(--pink);
   min-width: 20px; padding-top: 1px; line-height: 1.4; flex-shrink: 0;
 }
-.news-content { font-size: 12.5px; line-height: 1.6; color: #374a63; font-weight: 500; flex: 1; }
+.news-content {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #2f445d;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  flex: 1;
+}
 .news-tag {
   flex-shrink: 0; font-family: "JetBrains Mono", monospace;
   font-size: 7.5px; font-weight: 700;
