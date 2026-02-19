@@ -1,10 +1,9 @@
 name: Fetch News and Trigger Vercel Deploy
 
 on:
-  # 定时触发：每天北京时间早上 8 点 (UTC 0 点)
+  # 定时触发：每天北京时间早上 8 点到 9 点，每 20 分钟一次（包含 9:00）
   schedule:
-    - cron: '0 23 * * *'
-    - cron: '0 0 * * *'
+    - cron: '0,20,40 0 * * *'
     - cron: '0 1 * * *'
   # 允许手动触发
   workflow_dispatch:
@@ -38,7 +37,7 @@ jobs:
           git add data.json
           # 只有当 data.json 有变化时才提交，避免空提交
           if ! git diff --staged --quiet; then
-            git commit -m "chore: update daily news data [skip ci]"
+            git commit -m "chore: update schedule to run Beijing 08:00-09:00 every 20 minutes [skip ci]"
             git push
           else
             echo "No changes to commit"
