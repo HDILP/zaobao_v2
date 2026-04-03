@@ -1,9 +1,10 @@
 name: Fetch News and Trigger Vercel Deploy
 
 on:
-  # 定时触发：每天北京时间早上 8 点到 9 点，每 20 分钟一次（包含 9:00）
   schedule:
-    - cron: '0,20,40 0,1 * * *'
+    # 北京时间 09:00 - 12:00，每 30 分钟一次
+    # 对应 UTC 时间 01:00 - 04:00
+    - cron: '0,30 1-4 * * *'
   # 允许手动触发
   workflow_dispatch:
 
@@ -30,14 +31,28 @@ jobs:
         run: node scripts/fetch-news.js
 
       - name: Commit and Push data.json
+        id: commit_step # 给这一步加个 ID，方便后面判断是否有更新
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add data.json
-          # 只有当 data.json 有变化时才提交，避免空提交
           if ! git diff --staged --quiet; then
-            git commit -m "chore: update schedule to run Beijing 08:00-09:00 every 20 minutes [skip ci]"
+            git commit -m "chore: update daily news data [skip ci]"
             git push
+            echo "changed=true" >> $GITHUB_OUTPUT
           else
             echo "No changes to commit"
+            echo "changed=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Trigger Remote Repository Dispatch
+        # 只有在数据真正更新（有 commit）时才触发
+        if: steps.commit_step.outputs.changed == 'true'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          # 你需要在 Settings > Secrets 中添加一个名为 REPO_DISPATCH_PAT 的 Secret
+          # 该 Token 至少需要目标私有仓库的 `contents: write` 权限
+          token: ${{ secrets.REPO_DISPATCH_PAT }}
+          repository: HDILP/fkst-auto # 替换为你的私有仓库全名
+          event-type: zaobao # 自定义事件名
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
