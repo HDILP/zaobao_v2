@@ -2,9 +2,7 @@ name: Fetch News and Trigger Vercel Deploy
 
 on:
   schedule:
-    # 北京时间 09:00 - 12:00，每 30 分钟一次
-    # 对应 UTC 时间 01:00 - 04:00
-    - cron: '0,30 1-4 * * *'
+    - cron: '7,37 1-4 * * *'
   # 允许手动触发
   workflow_dispatch:
 
