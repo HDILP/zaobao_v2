@@ -51,6 +51,6 @@ jobs:
           # 你需要在 Settings > Secrets 中添加一个名为 REPO_DISPATCH_PAT 的 Secret
           # 该 Token 至少需要目标私有仓库的 `contents: write` 权限
           token: ${{ secrets.REPO_DISPATCH_PAT }}
-          repository: HDILP/zaobao_auto # 替换为你的私有仓库全名
+          repository: HDILP/auto_zaobao # 替换为你的私有仓库全名
           event-type: zaobao # 自定义事件名
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
